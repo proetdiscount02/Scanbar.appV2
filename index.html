@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCANBA V2</title>
+
+<style>
+body { font-family: system-ui, Arial; margin: 12px; }
+h2 { margin-top: 0; }
+label { font-weight: 600; display:block; margin-top:10px; }
+input, select, textarea, button {
+  width:100%; padding:10px; margin-top:5px; font-size:16px;
+}
+button { cursor:pointer; }
+.card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:12px; }
+.row { display:flex; gap:10px; }
+.row > div { flex:1; }
+img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:5px; }
+.muted { color:#666; font-size:13px; }
+.ok { color:green; }
+.err { color:red; }
+</style>
+</head>
+
+<body>
+
+<h2>📦 SCANBA</h2>
+
+<!-- OPERATOR -->
+<div class="card">
+  <label>Opérateur *</label>
+  <select id="operator">
+    <option value="">— Sélectionner —</option>
+    <option>Alice</option>
+    <option>Bob</option>
+    <option>Charlie</option>
+  </select>
+  <div class="muted">Choisi une seule fois par session</div>
+</div>
+
+<!-- SCAN -->
+<div class="card">
+  <label>Scan EAN / QR</label>
+  <input id="scanInput" placeholder="Scanner ici (douchette)" autocomplete="off">
+  <div class="row">
+    <button onclick="noEAN()">Produit sans EAN</button>
+    <button onclick="clearScan()">Effacer</button>
+  </div>
+</div>
+
+<!-- PRODUCT -->
+<div class="card">
+  <label>Référence produit *</label>
+  <input id="reference">
+
+  <label>Quantité *</label>
+  <input id="quantity" type="number" min="1">
+
+  <label>Couleur (optionnel)</label>
+  <input id="color">
+
+  <label>Commentaire (optionnel)</label>
+  <textarea id="comment"></textarea>
+</div>
+
+<!-- IMAGES -->
+<div class="card">
+  <label>Photos (max 3)</label>
+  <input type="file" accept="image/*" capture="environment" onchange="addImage(this)">
+  <div id="previews"></div>
+  <div class="muted">Photos compressées automatiquement (500×500)</div>
+</div>
+
+<!-- ACTION -->
+<div class="card">
+  <button onclick="submitScan()">✅ Valider le scan</button>
+  <div id="status" class="muted"></div>
+</div>
+
+<script>
+/************ CONFIG ************/
+const API_URL = "https://script.google.com/macros/s/AKfycbwejG5MhnMR-OtXPmp-kbZdueom6QBhMV1IXfj2XnZoH2kTKIazXDLcp_PfTl8jbmFn/exec"; // <-- URL WebApp V2
+const API_TOKEN = "PRO_DISCOUNT02"; // <-- même token que Code.gs
+
+/************ STATE ************/
+let images = [];
+let noEanFlag = false;
+
+/************ SESSION ************/
+const operatorEl = document.getElementById("operator");
+operatorEl.value = localStorage.getItem("scanba_operator") || "";
+operatorEl.onchange = () => localStorage.setItem("scanba_operator", operatorEl.value);
+
+/************ SCAN ************/
+document.getElementById("scanInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") e.preventDefault();
+});
+
+function noEAN() {
+  noEanFlag = true;
+  document.getElementById("scanInput").value = "";
+  setStatus("Produit sans EAN", "ok");
+}
+
+function clearScan() {
+  noEanFlag = false;
+  document.getElementById("scanInput").value = "";
+}
+
+/************ IMAGES ************/
+function addImage(input) {
+  if (!input.files[0] || images.length >= 3) return;
+  const file = input.files[0];
+
+  resizeImage(file, 500, data => {
+    images.push({ index: images.length + 1, data });
+    renderPreviews();
+  });
+
+  input.value = "";
+}
+
+function resizeImage(file, max, cb) {
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      const scale = Math.min(max / img.width, max / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      cb(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderPreviews() {
+  const div = document.getElementById("previews");
+  div.innerHTML = "";
+  images.forEach(i => {
+    const img = document.createElement("img");
+    img.src = "data:image/jpeg;base64," + i.data;
+    img.className = "preview";
+    div.appendChild(img);
+  });
+}
+
+/************ SUBMIT ************/
+function submitScan() {
+  const operator = operatorEl.value.trim();
+  const reference = document.getElementById("reference").value.trim();
+  const quantity = Number(document.getElementById("quantity").value);
+
+  if (!operator || !reference || quantity < 1) {
+    return setStatus("Champs obligatoires manquants", "err");
+  }
+
+  const payload = {
+    version: 1,
+    token: API_TOKEN,
+    action: "CREATE_SCAN",
+    client: {
+      operator,
+      device: navigator.userAgent
+    },
+    scan: {
+      scan_method: "scanner",
+      code_type: noEanFlag ? "INTERNAL" : "",
+      code_value: noEanFlag ? "" : document.getElementById("scanInput").value.trim(),
+      no_ean: noEanFlag
+    },
+    product: {
+      product_reference: reference,
+      quantity,
+      color: document.getElementById("color").value.trim(),
+      comment: document.getElementById("comment").value.trim()
+    },
+    images: {
+      count: images.length,
+      items: images.map(i => ({
+        index: i.index,
+        filename: `IMG_${i.index}.jpg`,
+        mime: "image/jpeg",
+        data_base64: i.data
+      }))
+    }
+  };
+
+  setStatus("Envoi…");
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(r => {
+    if (!r.ok) throw new Error(r.error || "Erreur");
+    resetForm();
+    setStatus("Scan enregistré ✔", "ok");
+  })
+  .catch(e => setStatus(e.message, "err"));
+}
+
+function resetForm() {
+  document.getElementById("scanInput").value = "";
+  document.getElementById("reference").value = "";
+  document.getElementById("quantity").value = "";
+  document.getElementById("color").value = "";
+  document.getElementById("comment").value = "";
+  images = [];
+  noEanFlag = false;
+  renderPreviews();
+}
+
+function setStatus(msg, cls="muted") {
+  const s = document.getElementById("status");
+  s.textContent = msg;
+  s.className = cls;
+}
+</script>
+
+</body>
+</html>
