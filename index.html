@@ -3,23 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SCANBA V2</title>
-
+<title>Scanbar.appV2</title>
 <style>
-body { font-family: system-ui, Arial; margin: 12px; }
-h2 { margin-top: 0; }
-label { font-weight: 600; display:block; margin-top:10px; }
-input, select, textarea, button {
-  width:100%; padding:10px; margin-top:5px; font-size:16px;
-}
-button { cursor:pointer; }
-.card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:12px; }
-.row { display:flex; gap:10px; }
-.row > div { flex:1; }
-img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:5px; }
-.muted { color:#666; font-size:13px; }
-.ok { color:green; }
-.err { color:red; }
+  body { font-family: system-ui, Arial; margin: 12px; }
+  h2 { margin-top: 0; }
+  label { font-weight: 600; display:block; margin-top:10px; }
+  input, select, textarea, button { width:100%; padding:10px; margin-top:5px; font-size:16px; }
+  button { cursor:pointer; }
+  .card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > button { flex:1; min-width: 160px; }
+  img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:5px; }
+  .muted { color:#666; font-size:13px; }
+  .ok { color:green; }
+  .err { color:red; }
+  .item { padding:8px; border:1px solid #eee; border-radius:8px; margin:6px 0; }
+  .item b { font-size: 15px; }
 </style>
 </head>
 
@@ -27,7 +26,6 @@ img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:
 
 <h2>📦 Scanbar.appV2</h2>
 
-<!-- OPERATOR -->
 <div class="card">
   <label>Opérateur *</label>
   <select id="operator">
@@ -39,17 +37,23 @@ img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:
   <div class="muted">Choisi une seule fois par session</div>
 </div>
 
-<!-- SCAN -->
+<div class="card">
+  <div class="row">
+    <button type="button" onclick="loadRecent()">📜 Scans récents</button>
+    <button type="button" onclick="clearEdit()">➕ Nouveau scan</button>
+  </div>
+  <div id="recentList" class="muted" style="margin-top:10px;"></div>
+</div>
+
 <div class="card">
   <label>Scan EAN / QR</label>
   <input id="scanInput" placeholder="Scanner ici (douchette)" autocomplete="off">
   <div class="row">
-    <button onclick="noEAN()">Produit sans EAN</button>
-    <button onclick="clearScan()">Effacer</button>
+    <button type="button" onclick="noEAN()">Produit sans EAN</button>
+    <button type="button" onclick="clearScan()">Effacer</button>
   </div>
 </div>
 
-<!-- PRODUCT -->
 <div class="card">
   <label>Référence produit *</label>
   <input id="reference">
@@ -64,7 +68,6 @@ img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:
   <textarea id="comment"></textarea>
 </div>
 
-<!-- IMAGES -->
 <div class="card">
   <label>Photos (max 3)</label>
   <input type="file" accept="image/*" capture="environment" onchange="addImage(this)">
@@ -72,35 +75,34 @@ img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:
   <div class="muted">Photos compressées automatiquement (500×500)</div>
 </div>
 
-<!-- ACTION -->
 <div class="card">
-  <button onclick="submitScan()">✅ Valider le scan</button>
-  <div id="status" class="muted"></div>
+  <button id="btnSubmit" type="button" onclick="submitScan()">✅ Valider le scan</button>
+  <div id="status" class="muted" style="margin-top:8px;"></div>
 </div>
 
 <script>
 /************ CONFIG ************/
-const API_URL = "https://script.google.com/macros/s/AKfycbwejG5MhnMR-OtXPmp-kbZdueom6QBhMV1IXfj2XnZoH2kTKIazXDLcp_PfTl8jbmFn/exec"; // <-- URL WebApp V2
-const API_TOKEN = "PRO_DISCOUNT02"; // <-- même token que Code.gs
+const API_URL = "https://script.google.com/macros/s/AKfycbwejG5MhnMR-OtXPmp-kbZdueom6QBhMV1IXfj2XnZoH2kTKIazXDLcp_PfTl8jbmFn/exec"; // <-- ton URL Apps Script /exec
+const API_TOKEN = "PRO_DISCOUNT02"; // <-- doit matcher Code.gs
 
 /************ STATE ************/
 let images = [];
 let noEanFlag = false;
+let editingScanId = null;
 
-/************ SESSION ************/
 const operatorEl = document.getElementById("operator");
 operatorEl.value = localStorage.getItem("scanba_operator") || "";
 operatorEl.onchange = () => localStorage.setItem("scanba_operator", operatorEl.value);
 
-/************ SCAN ************/
 document.getElementById("scanInput").addEventListener("keydown", e => {
   if (e.key === "Enter") e.preventDefault();
 });
 
+/************ SCAN ************/
 function noEAN() {
   noEanFlag = true;
   document.getElementById("scanInput").value = "";
-  setStatus("Produit sans EAN", "ok");
+  setStatus("Produit sans EAN (code interne généré)", "ok");
 }
 
 function clearScan() {
@@ -110,9 +112,10 @@ function clearScan() {
 
 /************ IMAGES ************/
 function addImage(input) {
-  if (!input.files[0] || images.length >= 3) return;
-  const file = input.files[0];
+  if (!input.files[0]) return;
+  if (images.length >= 3) return setStatus("Max 3 photos", "err");
 
+  const file = input.files[0];
   resizeImage(file, 500, data => {
     images.push({ index: images.length + 1, data });
     renderPreviews();
@@ -128,10 +131,10 @@ function resizeImage(file, max, cb) {
     img.onload = () => {
       const scale = Math.min(max / img.width, max / img.height, 1);
       const canvas = document.createElement("canvas");
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-      cb(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+      cb(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]); // base64 pur
     };
     img.src = e.target.result;
   };
@@ -142,11 +145,88 @@ function renderPreviews() {
   const div = document.getElementById("previews");
   div.innerHTML = "";
   images.forEach(i => {
-    const img = document.createElement("img");
-    img.src = "data:image/jpeg;base64," + i.data;
-    img.className = "preview";
-    div.appendChild(img);
+    const im = document.createElement("img");
+    im.src = "data:image/jpeg;base64," + i.data;
+    im.className = "preview";
+    div.appendChild(im);
   });
+}
+
+/************ HISTORIQUE ************/
+function loadRecent() {
+  const operator = operatorEl.value.trim();
+  if (!operator) return setStatus("Sélectionne l'opérateur d'abord", "err");
+
+  setStatus("Chargement scans récents…");
+
+  const payload = {
+    version: 1,
+    token: API_TOKEN,
+    action: "LIST_RECENT",
+    client: { operator, device: navigator.userAgent },
+    limit: 50
+  };
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // éviter preflight CORS
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(r => {
+    if (!r.ok) throw new Error(r.error || "Erreur");
+    renderRecent(r.items || []);
+    setStatus("OK", "ok");
+  })
+  .catch(e => setStatus(e.message, "err"));
+}
+
+function renderRecent(items) {
+  const div = document.getElementById("recentList");
+  if (!items.length) {
+    div.innerHTML = "<div class='muted'>Aucun scan récent.</div>";
+    return;
+  }
+
+  div.innerHTML = items.slice(0, 30).map(it => {
+    const ts = it.scan_timestamp ? String(it.scan_timestamp) : "";
+    const code = it.code_value ? String(it.code_value) : "";
+    const ref = it.product_reference ? String(it.product_reference) : "";
+    const qty = it.quantity ? String(it.quantity) : "";
+    const hasImg = (it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw) ? "📷" : "";
+    return `
+      <div class="item">
+        <div><b>${ref}</b> · Qté ${qty} ${hasImg}</div>
+        <div class="muted">${ts} · ${code}</div>
+        <button type="button" style="margin-top:6px;" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectRecent(item) {
+  editingScanId = item.scan_id;
+
+  document.getElementById("scanInput").value = item.code_value || "";
+  document.getElementById("reference").value = item.product_reference || "";
+  document.getElementById("quantity").value = item.quantity || "";
+  document.getElementById("color").value = item.color || "";
+  document.getElementById("comment").value = item.comment || "";
+
+  images = [];
+  noEanFlag = (String(item.code_type || "").toUpperCase() === "INTERNAL");
+  renderPreviews();
+
+  document.getElementById("btnSubmit").textContent = "💾 Mettre à jour";
+  setStatus("Mode édition : ajoute photos/infos puis mets à jour", "ok");
+  setTimeout(() => document.getElementById("scanInput").focus(), 50);
+}
+
+function clearEdit() {
+  editingScanId = null;
+  document.getElementById("btnSubmit").textContent = "✅ Valider le scan";
+  resetForm();
+  setStatus("Mode nouveau scan", "muted");
 }
 
 /************ SUBMIT ************/
@@ -159,14 +239,14 @@ function submitScan() {
     return setStatus("Champs obligatoires manquants", "err");
   }
 
+  const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
+
   const payload = {
     version: 1,
     token: API_TOKEN,
-    action: "CREATE_SCAN",
-    client: {
-      operator,
-      device: navigator.userAgent
-    },
+    action,
+    client: { operator, device: navigator.userAgent },
+    scan_id: editingScanId || "",
     scan: {
       scan_method: "scanner",
       code_type: noEanFlag ? "INTERNAL" : "",
@@ -190,22 +270,27 @@ function submitScan() {
     }
   };
 
-  setStatus("Envoi…");
+  setStatus(action === "UPDATE_SCAN" ? "Mise à jour…" : "Envoi…");
 
   fetch(API_URL, {
-  method: "POST",
-  headers: { "Content-Type": "text/plain;charset=utf-8" },
-  body: JSON.stringify(payload)
-})
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  })
   .then(r => r.json())
   .then(r => {
     if (!r.ok) throw new Error(r.error || "Erreur");
+
+    // Après réussite : on revient en mode scan (rafale)
+    editingScanId = null;
+    document.getElementById("btnSubmit").textContent = "✅ Valider le scan";
     resetForm();
-    setStatus("Scan enregistré ✔", "ok");
+    setStatus("OK ✔", "ok");
   })
   .catch(e => setStatus(e.message, "err"));
 }
 
+/************ RESET + STATUS ************/
 function resetForm() {
   document.getElementById("scanInput").value = "";
   document.getElementById("reference").value = "";
@@ -226,7 +311,7 @@ function setStatus(msg, cls="muted") {
   s.className = cls;
 }
 
-// Focus au chargement de la page
+// Focus au chargement
 setTimeout(() => document.getElementById("scanInput").focus(), 50);
 </script>
 
