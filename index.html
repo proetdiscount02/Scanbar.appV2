@@ -4,21 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scanbar.appV2</title>
+
 <style>
-  body { font-family: system-ui, Arial; margin: 12px; }
-  h2 { margin-top: 0; }
+  body { font-family: system-ui, Arial; margin: 12px; background:#f7f7f7; }
+  h2 { margin: 0 0 10px 0; }
   label { font-weight: 600; display:block; margin-top:10px; }
-  input, select, textarea, button { width:100%; padding:10px; margin-top:5px; font-size:16px; }
+  input, select, textarea, button {
+    width:100%; padding:10px; margin-top:5px; font-size:16px;
+    box-sizing:border-box;
+  }
   button { cursor:pointer; }
-  .card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:12px; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .row > * { flex:1; min-width: 160px; }
-  img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:5px; }
+  button[disabled] { opacity:0.5; cursor:not-allowed; }
+
+  .card {
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:12px;
+  }
+
+  .row {
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .row > * { flex:1; min-width:140px; }
+
   .muted { color:#666; font-size:13px; }
-  .ok { color:green; }
-  .err { color:red; }
-  .item { padding:8px; border:1px solid #eee; border-radius:8px; margin:6px 0; }
-  .item b { font-size: 15px; }
+  .ok { color:#2e7d32; }
+  .err { color:#c62828; }
+
+  img.preview {
+    max-width:100px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    margin:5px;
+  }
+
+  .item {
+    padding:8px;
+    border:1px solid #eee;
+    border-radius:8px;
+    margin:6px 0;
+  }
+
+  .toast {
+    position:fixed;
+    bottom:16px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#222;
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    opacity:0;
+    transition:opacity .2s;
+    pointer-events:none;
+  }
+  .toast.show { opacity:0.95; }
 </style>
 </head>
 
@@ -26,7 +71,7 @@
 
 <h2>📦 Scanbar.appV2</h2>
 
-<!-- OPERATOR -->
+<!-- OPERATEUR -->
 <div class="card">
   <label>Opérateur *</label>
   <select id="operator">
@@ -39,41 +84,46 @@
   <div class="muted">Choisi une seule fois par session</div>
 </div>
 
-<!-- HISTORY DRAWER -->
+<!-- HISTORIQUE -->
 <div class="card">
-  <div class="row" style="align-items:center;">
-    <button type="button" onclick="toggleHistory()">📜 Scans récents</button>
-    <span id="historyArrow" style="font-size:18px; margin-left:6px; flex:0;">▶</span>
-    <button type="button" onclick="clearEdit()" style="margin-left:auto;">➕ Nouveau scan</button>
+  <div class="row">
+    <button onclick="toggleHistory()">📜 Scans récents</button>
+    <span id="historyArrow">▶</span>
+    <button onclick="clearEdit()">➕ Nouveau scan</button>
   </div>
 
-  <div id="historyPanel" style="display:none; margin-top:10px;">
-
+  <div id="historyPanel" style="display:none;margin-top:10px;">
     <div class="row">
       <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
       <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
     </div>
 
     <div class="row">
-      <button type="button" onclick="loadRecent()">🔄 Actualiser</button>
-      <button type="button" onclick="exportCSV()">⬇ Export CSV</button>
+      <label><input type="checkbox" id="filterNoPhoto" onchange="applyFilters()"> Sans photo</label>
+      <label><input type="checkbox" id="filterToday" onchange="applyFilters()"> Aujourd’hui</label>
     </div>
 
-    <div id="recentList" style="margin-top:10px; max-height:260px; overflow-y:auto;"></div>
+    <div class="row">
+      <button onclick="loadRecent()">🔄 Actualiser</button>
+      <button onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+
+    <div id="recentList" style="max-height:260px;overflow-y:auto;margin-top:10px;"></div>
   </div>
 </div>
 
 <!-- SCAN -->
 <div class="card">
   <label>Scan EAN / QR</label>
-  <input id="scanInput" placeholder="Scanner ici (douchette)" autocomplete="off">
+  <input id="scanInput" placeholder="Scanner ici (douchette)">
   <div class="row">
-    <button type="button" onclick="noEAN()">Produit sans EAN</button>
-    <button type="button" onclick="clearScan()">Effacer</button>
+    <button onclick="startCameraScan()">📷 Scanner avec l’appareil photo</button>
+    <button onclick="noEAN()">Produit sans EAN</button>
+    <button onclick="clearScan()">Effacer</button>
   </div>
 </div>
 
-<!-- PRODUCT -->
+<!-- PRODUIT -->
 <div class="card">
   <label>Référence produit *</label>
   <input id="reference">
@@ -88,26 +138,27 @@
   <textarea id="comment"></textarea>
 </div>
 
-<!-- IMAGES -->
+<!-- PHOTOS -->
 <div class="card">
   <label>Photos (max 3)</label>
   <input type="file" accept="image/*" capture="environment" onchange="addImage(this)">
   <div id="previews"></div>
-  <div class="muted">Photos compressées automatiquement (500×500)</div>
 </div>
 
 <!-- ACTION -->
 <div class="card">
-  <button id="btnSubmit" type="button" onclick="submitScan()">✅ Valider le scan</button>
-  <div id="status" class="muted" style="margin-top:8px;"></div>
+  <button onclick="submitScan()">✅ Valider le scan</button>
+  <div id="status" class="muted"></div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
-/************ CONFIG ************/
+/* ================= CONFIG ================= */
 const API_URL = "https://script.google.com/macros/s/AKfycbwA7pFaZIr6uN6Gu2i77W5bEnN5An8KhMV4RlpgHrBRKfXy-30BBsJK6zsP78Xxgj4/exec";
 const API_TOKEN = "PRO_DISCOUNT02";
 
-/************ STATE ************/
+/* ================= STATE ================= */
 let images = [];
 let noEanFlag = false;
 let editingScanId = null;
@@ -115,281 +166,187 @@ let editingScanId = null;
 let recentItemsCache = [];
 let historyOpen = false;
 
-/************ SESSION ************/
+/* ================= UTILS ================= */
+const scanEl = document.getElementById("scanInput");
 const operatorEl = document.getElementById("operator");
+
 operatorEl.value = localStorage.getItem("scanba_operator") || "";
 operatorEl.onchange = () => localStorage.setItem("scanba_operator", operatorEl.value);
 
-/************ FOCUS / SCAN ************/
-document.getElementById("scanInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") e.preventDefault();
-});
-
-function noEAN() {
-  noEanFlag = true;
-  document.getElementById("scanInput").value = "";
-  setStatus("Produit sans EAN (code interne généré)", "ok");
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1200);
 }
+function setStatus(m,c="muted"){const s=document.getElementById("status");s.textContent=m;s.className=c;}
+function focusScan(){setTimeout(()=>scanEl.focus(),50);}
 
-function clearScan() {
-  noEanFlag = false;
-  document.getElementById("scanInput").value = "";
-}
+/* ================= SCAN ================= */
+function noEAN(){noEanFlag=true;scanEl.value="";toast("Sans EAN");focusScan();}
+function clearScan(){noEanFlag=false;scanEl.value="";focusScan();}
 
-/************ IMAGES ************/
-function addImage(input) {
-  if (!input.files[0]) return;
-  if (images.length >= 3) return setStatus("Max 3 photos", "err");
+/* ===== CAMERA SCAN ===== */
+let camStream=null, detector=null;
 
-  const file = input.files[0];
-  resizeImage(file, 500, data => {
-    images.push({ index: images.length + 1, data });
-    renderPreviews();
-  });
-
-  input.value = "";
-}
-
-function resizeImage(file, max, cb) {
-  const img = new Image();
-  const reader = new FileReader();
-  reader.onload = e => {
-    img.onload = () => {
-      const scale = Math.min(max / img.width, max / img.height, 1);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-      cb(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function renderPreviews() {
-  const div = document.getElementById("previews");
-  div.innerHTML = "";
-  images.forEach(i => {
-    const im = document.createElement("img");
-    im.src = "data:image/jpeg;base64," + i.data;
-    im.className = "preview";
-    div.appendChild(im);
-  });
-}
-
-/************ HISTORY DRAWER ************/
-function toggleHistory() {
-  historyOpen = !historyOpen;
-  document.getElementById("historyPanel").style.display = historyOpen ? "block" : "none";
-  document.getElementById("historyArrow").textContent = historyOpen ? "▼" : "▶";
-  if (historyOpen && !recentItemsCache.length) loadRecent();
-}
-
-function loadRecent() {
-  const operator = operatorEl.value.trim();
-  if (!operator) return setStatus("Sélectionne l'opérateur d'abord", "err");
-
-  setStatus("Chargement scans récents…");
-
-  const payload = {
-    version: 1,
-    token: API_TOKEN,
-    action: "LIST_RECENT",
-    client: { operator, device: navigator.userAgent },
-    limit: 50
-  };
-
-  fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(r => {
-    if (!r.ok) throw new Error(r.error || "Erreur");
-    recentItemsCache = r.items || [];
-    applyFilters();
-    setStatus("OK", "ok");
-  })
-  .catch(e => setStatus(e.message, "err"));
-}
-
-function applyFilters() {
-  const ref = document.getElementById("filterRef").value.toLowerCase();
-  const code = document.getElementById("filterCode").value.toLowerCase();
-
-  const filtered = recentItemsCache.filter(it => {
-    const r = String(it.product_reference || "").toLowerCase();
-    const c = String(it.code_value || "").toLowerCase();
-    return (!ref || r.includes(ref)) && (!code || c.includes(code));
-  });
-
-  renderRecent(filtered);
-}
-
-function renderRecent(items) {
-  const div = document.getElementById("recentList");
-  if (!items.length) {
-    div.innerHTML = "<div class='muted'>Aucun scan récent.</div>";
+async function startCameraScan(){
+  if(!("BarcodeDetector"in window)){
+    alert("Scan caméra non supporté sur ce navigateur.\nUtilise la douchette.");
     return;
   }
+  detector=new BarcodeDetector({formats:["ean_13","ean_8","qr_code"]});
+  const video=document.createElement("video");
+  video.setAttribute("playsinline",true);
+  video.style.width="100%";
 
-  div.innerHTML = items.slice(0, 50).map(it => {
-    const ts = it.scan_timestamp ? String(it.scan_timestamp) : "";
-    const code = it.code_value ? String(it.code_value) : "";
-    const ref = it.product_reference ? String(it.product_reference) : "";
-    const qty = it.quantity ? String(it.quantity) : "";
-    const hasImg = (it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw) ? "📷" : "";
-    return `
-      <div class="item">
-        <div><b>${ref}</b> · Qté ${qty} ${hasImg}</div>
-        <div class="muted">${ts} · ${code}</div>
-        <button type="button" style="margin-top:6px;" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir</button>
-      </div>
-    `;
-  }).join("");
+  const box=document.createElement("div");
+  box.className="card";
+  box.appendChild(video);
+
+  const btn=document.createElement("button");
+  btn.textContent="✖ Fermer la caméra";
+  btn.onclick=()=>stopCamera(box);
+  box.appendChild(btn);
+
+  document.body.prepend(box);
+
+  camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+  video.srcObject=camStream;
+  await video.play();
+
+  (function loop(){
+    detector.detect(video).then(codes=>{
+      if(codes.length){
+        scanEl.value=codes[0].rawValue;
+        toast("Code détecté ✔");
+        stopCamera(box);
+        focusScan();
+      } else requestAnimationFrame(loop);
+    });
+  })();
+}
+function stopCamera(box){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  if(box)box.remove();
 }
 
-function exportCSV() {
-  if (!recentItemsCache.length) {
-    return setStatus("Aucune donnée à exporter", "err");
-  }
-
-  const headers = [
-    "scan_timestamp",
-    "operator",
-    "code_type",
-    "code_value",
-    "product_reference",
-    "quantity",
-    "color",
-    "comment",
-    "image_folder_url"
-  ];
-
-  const rows = recentItemsCache.map(it =>
-    headers.map(h => `"${String(it[h] || "").replace(/"/g, '""')}"`).join(";")
-  );
-
-  const csv = headers.join(";") + "\n" + rows.join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "scanbar_export.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/************ EDIT MODE ************/
-function selectRecent(item) {
-  editingScanId = item.scan_id;
-
-  document.getElementById("scanInput").value = item.code_value || "";
-  document.getElementById("reference").value = item.product_reference || "";
-  document.getElementById("quantity").value = item.quantity || "";
-  document.getElementById("color").value = item.color || "";
-  document.getElementById("comment").value = item.comment || "";
-
-  images = [];
-  noEanFlag = (String(item.code_type || "").toUpperCase() === "INTERNAL");
-  renderPreviews();
-
-  document.getElementById("btnSubmit").textContent = "💾 Mettre à jour";
-  setStatus("Mode édition : ajoute photos/infos puis mets à jour", "ok");
-  setTimeout(() => document.getElementById("scanInput").focus(), 50);
-}
-
-function clearEdit() {
-  editingScanId = null;
-  document.getElementById("btnSubmit").textContent = "✅ Valider le scan";
-  resetForm();
-  setStatus("Mode nouveau scan", "muted");
-}
-
-/************ SUBMIT ************/
-function submitScan() {
-  const operator = operatorEl.value.trim();
-  const reference = document.getElementById("reference").value.trim();
-  const quantity = Number(document.getElementById("quantity").value);
-
-  if (!operator || !reference || quantity < 1) {
-    return setStatus("Champs obligatoires manquants", "err");
-  }
-
-  const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
-
-  const payload = {
-    version: 1,
-    token: API_TOKEN,
-    action,
-    client: { operator, device: navigator.userAgent },
-    scan_id: editingScanId || "",
-    scan: {
-      scan_method: "scanner",
-      code_type: noEanFlag ? "INTERNAL" : "",
-      code_value: noEanFlag ? "" : document.getElementById("scanInput").value.trim(),
-      no_ean: noEanFlag
-    },
-    product: {
-      product_reference: reference,
-      quantity,
-      color: document.getElementById("color").value.trim(),
-      comment: document.getElementById("comment").value.trim()
-    },
-    images: {
-      count: images.length,
-      items: images.map(i => ({
-        index: i.index,
-        filename: `IMG_${i.index}.jpg`,
-        mime: "image/jpeg",
-        data_base64: i.data
-      }))
-    }
+/* ================= IMAGES ================= */
+function addImage(input){
+  if(!input.files[0]||images.length>=3)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    images.push({index:images.length+1,data:e.target.result.split(",")[1]});
+    renderPreviews();
   };
-
-  setStatus(action === "UPDATE_SCAN" ? "Mise à jour…" : "Envoi…");
-
-  fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(r => {
-    if (!r.ok) throw new Error(r.error || "Erreur");
-
-    editingScanId = null;
-    document.getElementById("btnSubmit").textContent = "✅ Valider le scan";
-    resetForm();
-    setStatus("OK ✔", "ok");
-  })
-  .catch(e => setStatus(e.message, "err"));
+  r.readAsDataURL(input.files[0]);
+  input.value="";
+}
+function renderPreviews(){
+  const d=document.getElementById("previews");d.innerHTML="";
+  images.forEach(i=>{
+    const im=document.createElement("img");
+    im.src="data:image/jpeg;base64,"+i.data;
+    im.className="preview";
+    d.appendChild(im);
+  });
 }
 
-/************ RESET + STATUS ************/
-function resetForm() {
-  document.getElementById("scanInput").value = "";
-  document.getElementById("reference").value = "";
-  document.getElementById("quantity").value = "";
-  document.getElementById("color").value = "";
-  document.getElementById("comment").value = "";
-  images = [];
-  noEanFlag = false;
-  renderPreviews();
+/* ================= HISTORY ================= */
+function toggleHistory(){
+  historyOpen=!historyOpen;
+  document.getElementById("historyPanel").style.display=historyOpen?"block":"none";
+  document.getElementById("historyArrow").textContent=historyOpen?"▼":"▶";
+  if(historyOpen&&!recentItemsCache.length)loadRecent();
+}
+function loadRecent(){
+  fetch(API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({
+      token:API_TOKEN,
+      action:"LIST_RECENT",
+      client:{operator:operatorEl.value}
+    })
+  }).then(r=>r.json()).then(r=>{
+    recentItemsCache=r.items||[];
+    applyFilters();
+  });
+}
+function applyFilters(){
+  const ref=document.getElementById("filterRef").value.toLowerCase();
+  const code=document.getElementById("filterCode").value.toLowerCase();
+  const noPhoto=document.getElementById("filterNoPhoto").checked;
+  const today=document.getElementById("filterToday").checked;
 
-  setTimeout(() => document.getElementById("scanInput").focus(), 50);
+  const now=new Date();
+  const res=recentItemsCache.filter(it=>{
+    if(ref&&!String(it.product_reference||"").toLowerCase().includes(ref))return false;
+    if(code&&!String(it.code_value||"").toLowerCase().includes(code))return false;
+    if(noPhoto&&(it.image_1_url_raw||it.image_2_url_raw||it.image_3_url_raw))return false;
+    if(today){
+      const d=new Date(it.scan_timestamp);
+      if(d.toDateString()!==now.toDateString())return false;
+    }
+    return true;
+  });
+  renderRecent(res);
+}
+function renderRecent(items){
+  const d=document.getElementById("recentList");
+  d.innerHTML=items.map(it=>`
+    <div class="item">
+      <b>${it.product_reference}</b> · Qté ${it.quantity}<br>
+      <span class="muted">${it.code_value}</span>
+    </div>`).join("");
+}
+function exportCSV(){
+  const h=["scan_timestamp","operator","code_value","product_reference","quantity"];
+  const rows=recentItemsCache.map(it=>h.map(k=>`"${it[k]||""}"`).join(";"));
+  const csv=h.join(";")+"\n"+rows.join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="scanbar.csv";
+  a.click();
 }
 
-function setStatus(msg, cls="muted") {
-  const s = document.getElementById("status");
-  s.textContent = msg;
-  s.className = cls;
+/* ================= SUBMIT ================= */
+function submitScan(){
+  if(!operatorEl.value)return toast("Choisis l’opérateur");
+  if(!document.getElementById("reference").value||document.getElementById("quantity").value<1)
+    return toast("Référence + quantité obligatoires");
+
+  fetch(API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({
+      token:API_TOKEN,
+      action:editingScanId?"UPDATE_SCAN":"CREATE_SCAN",
+      scan_id:editingScanId||"",
+      client:{operator:operatorEl.value},
+      scan:{
+        code_value:noEanFlag?"":scanEl.value,
+        no_ean:noEanFlag
+      },
+      product:{
+        product_reference:document.getElementById("reference").value,
+        quantity:Number(document.getElementById("quantity").value),
+        color:document.getElementById("color").value,
+        comment:document.getElementById("comment").value
+      },
+      images:{items:images.map(i=>({index:i.index,data_base64:i.data,mime:"image/jpeg"}))}
+    })
+  }).then(()=>{toast("Enregistré ✔");resetForm();});
+}
+function resetForm(){
+  scanEl.value="";
+  document.getElementById("reference").value="";
+  document.getElementById("quantity").value="";
+  document.getElementById("color").value="";
+  document.getElementById("comment").value="";
+  images=[];noEanFlag=false;renderPreviews();focusScan();
 }
 
-setTimeout(() => document.getElementById("scanInput").focus(), 50);
+focusScan();
 </script>
 
 </body>
