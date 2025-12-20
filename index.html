@@ -215,6 +215,9 @@ function resetForm() {
   images = [];
   noEanFlag = false;
   renderPreviews();
+
+  // Focus immédiat pour scan en rafale
+  setTimeout(() => document.getElementById("scanInput").focus(), 50);
 }
 
 function setStatus(msg, cls="muted") {
@@ -222,6 +225,9 @@ function setStatus(msg, cls="muted") {
   s.textContent = msg;
   s.className = cls;
 }
+
+// Focus au chargement de la page
+setTimeout(() => document.getElementById("scanInput").focus(), 50);
 </script>
 
 </body>
