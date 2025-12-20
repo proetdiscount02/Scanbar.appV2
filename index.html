@@ -38,11 +38,28 @@
 </div>
 
 <div class="card">
-  <div class="row">
-    <button type="button" onclick="loadRecent()">📜 Scans récents</button>
-    <button type="button" onclick="clearEdit()">➕ Nouveau scan</button>
+  <div class="row" style="align-items:center;">
+    <button type="button" onclick="toggleHistory()">📜 Scans récents</button>
+    <span id="historyArrow" style="font-size:18px;">▶</span>
   </div>
-  <div id="recentList" class="muted" style="margin-top:10px;"></div>
+
+  <div id="historyPanel" style="display:none; margin-top:10px;">
+    <!-- Filtres -->
+    <div class="row">
+      <input id="filterRef" placeholder="Filtrer par référence">
+      <input id="filterCode" placeholder="Filtrer par code">
+    </div>
+
+    <div class="row">
+      <button type="button" onclick="loadRecent()">🔄 Actualiser</button>
+      <button type="button" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+
+    <!-- Liste scrollable -->
+    <div id="recentList"
+         style="margin-top:10px; max-height:260px; overflow-y:auto;">
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -175,7 +192,8 @@ function loadRecent() {
   .then(r => r.json())
   .then(r => {
     if (!r.ok) throw new Error(r.error || "Erreur");
-    renderRecent(r.items || []);
+    recentItemsCache = r.items || [];
+applyFilters();
     setStatus("OK", "ok");
   })
   .catch(e => setStatus(e.message, "err"));
@@ -314,6 +332,62 @@ function setStatus(msg, cls="muted") {
 // Focus au chargement
 setTimeout(() => document.getElementById("scanInput").focus(), 50);
 </script>
+let recentItemsCache = [];
+let historyOpen = false;
 
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  document.getElementById("historyPanel").style.display = historyOpen ? "block" : "none";
+  document.getElementById("historyArrow").textContent = historyOpen ? "▼" : "▶";
+
+  if (historyOpen && !recentItemsCache.length) {
+    loadRecent();
+  }
+}
+
+function applyFilters() {
+  const ref = document.getElementById("filterRef").value.toLowerCase();
+  const code = document.getElementById("filterCode").value.toLowerCase();
+
+  const filtered = recentItemsCache.filter(it => {
+    const r = String(it.product_reference || "").toLowerCase();
+    const c = String(it.code_value || "").toLowerCase();
+    return (!ref || r.includes(ref)) && (!code || c.includes(code));
+  });
+
+  renderRecent(filtered);
+}
+
+function exportCSV() {
+  if (!recentItemsCache.length) {
+    return setStatus("Aucune donnée à exporter", "err");
+  }
+
+  const headers = [
+    "scan_timestamp",
+    "operator",
+    "code_type",
+    "code_value",
+    "product_reference",
+    "quantity",
+    "color",
+    "comment",
+    "image_folder_url"
+  ];
+
+  const rows = recentItemsCache.map(it =>
+    headers.map(h => `"${String(it[h] || "").replace(/"/g, '""')}"`).join(";")
+  );
+
+  const csv = headers.join(";") + "\n" + rows.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "scanbar_export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 </body>
 </html>
