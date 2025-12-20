@@ -1,611 +1,835 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Scanbar.appV2</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Scanbar.appV2</title>
 
-<style>
-  body { font-family: system-ui, Arial; margin: 12px; background:#f7f7f7; }
-  h2 { margin: 0 0 10px 0; }
-  label { font-weight: 600; display:block; margin-top:10px; }
-  input, select, textarea, button {
-    width:100%; padding:10px; margin-top:5px; font-size:16px;
-    box-sizing:border-box;
-  }
-  button { cursor:pointer; }
-  button[disabled] { opacity:0.55; cursor:not-allowed; }
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#ffffff;
+      --border:#e6e6e6;
+      --text:#111827;
+      --muted:#6b7280;
 
-  .card { background:#fff; border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:12px; }
+      --blue:#1f5aa6;
+      --blueHover:#184b8a;
 
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .row > * { flex:1; min-width: 140px; }
+      --red:#d7262e;
+      --redHover:#b91d24;
 
-  .muted { color:#666; font-size:13px; }
-  .ok { color:#2e7d32; }
-  .err { color:#c62828; }
+      --shadow:0 6px 20px rgba(0,0,0,.06);
+      --radius:14px;
+    }
 
-  img.preview { max-width:100px; border:1px solid #ccc; border-radius:6px; margin:5px; }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
 
-  .item { padding:8px; border:1px solid #eee; border-radius:8px; margin:6px 0; }
-  .item b { font-size: 15px; }
+    .wrap{
+      max-width: 980px;
+      margin: 16px auto 40px;
+      padding: 0 14px;
+    }
 
-  .chip { display:inline-block; padding:2px 10px; border:1px solid #ddd; border-radius:999px; font-size:12px; color:#444; background:#fff; }
-  .topbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+    /* HEADER */
+    .brand{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding: 10px 0 16px;
+    }
+    .brand img{
+      max-height: 62px;
+      width:auto;
+      display:block;
+    }
 
-  .toast {
-    position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
-    background:#222; color:#fff; padding:10px 14px; border-radius:10px;
-    opacity:0; transition:opacity .2s; pointer-events:none; max-width:92vw;
-  }
-  .toast.show { opacity:0.95; }
+    /* CARDS */
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow: var(--shadow);
+      padding:14px;
+      margin:14px 0;
+    }
+    label{
+      display:block;
+      font-weight:700;
+      margin: 10px 0 6px;
+    }
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
 
-  .overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.25);
-    display:none; align-items:center; justify-content:center; z-index:9999;
-  }
-  .overlay .box {
-    background:#fff; border-radius:12px; padding:16px 18px; border:1px solid #ddd;
-    display:flex; gap:12px; align-items:center; width:min(420px, 92vw);
-  }
-  .spinner {
-    width:18px; height:18px; border:3px solid #ddd; border-top-color:#333; border-radius:50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+    input, select, textarea{
+      width:100%;
+      font-size:16px;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border:1px solid var(--border);
+      outline:none;
+      background:#fff;
+    }
+    textarea{min-height: 92px; resize: vertical;}
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .row > *{flex:1 1 260px;}
+
+    /* BUTTONS */
+    .btn{
+      appearance:none;
+      border:none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight:800;
+      cursor:pointer;
+      background: var(--blue);
+      color:#fff;
+      transition: .12s ease-in-out;
+      box-shadow: 0 2px 0 rgba(0,0,0,.08);
+      user-select:none;
+    }
+    .btn:hover{ background: var(--blueHover); }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .btnDanger{ background: var(--red); }
+    .btnDanger:hover{ background: var(--redHover); }
+
+    .btnGhost{
+      background:#f3f4f6;
+      color:#111827;
+      border:1px solid var(--border);
+      box-shadow:none;
+    }
+    .btnGhost:hover{ background:#eceff3; }
+
+    /* STATUS + LOADER */
+    .status{ margin-top: 10px; font-weight:700; font-size: 14px; }
+    .ok{color:#0f766e}
+    .err{color:#b91c1c}
+    .muted{color:var(--muted)}
+
+    .loadingBar{
+      display:none;
+      margin-top:10px;
+      height:8px;
+      border-radius:999px;
+      background:#eef2ff;
+      overflow:hidden;
+      border:1px solid #e5e7eb;
+    }
+    .loadingBar > div{
+      width:40%;
+      height:100%;
+      border-radius:999px;
+      background:var(--blue);
+      animation: move 1.1s infinite linear;
+    }
+    @keyframes move{
+      0%{transform:translateX(-120%)}
+      100%{transform:translateX(260%)}
+    }
+
+    /* HISTORY DRAWER */
+    .drawerHead{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .arrow{
+      width:38px;
+      height:44px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:18px;
+      cursor:pointer;
+      user-select:none;
+    }
+    #historyPanel{ display:none; margin-top:10px; }
+    #recentList{
+      margin-top:10px;
+      max-height: 320px;
+      overflow:auto;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background:#fff;
+    }
+    .item{
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .item:last-child{margin-bottom:0}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* PHOTO PREVIEWS */
+    .previews{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .preview{
+      width: 100px;
+      height: 100px;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      overflow:hidden;
+      background:#fafafa;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+    .preview img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .preview .x{
+      position:absolute;
+      top:6px;
+      right:6px;
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      border:none;
+      cursor:pointer;
+      background:rgba(0,0,0,.55);
+      color:#fff;
+      font-weight:900;
+      line-height:22px;
+    }
+
+    /* CAMERA PANEL */
+    #camPanel{display:none; margin-top:10px;}
+    #camVideo{
+      width:100%;
+      max-height: 360px;
+      background:#000;
+      border-radius: 12px;
+      border:1px solid var(--border);
+    }
+    .camHint{font-size:12px;color:var(--muted); margin-top:8px;}
+
+    @media (max-width:520px){
+      .brand img{ max-height:52px; }
+      .btn{ width:100%; }
+      .row > *{ flex:1 1 100%; }
+      .drawerHead{flex-wrap:wrap;}
+      .arrow{width:100%; height:42px;}
+    }
+  </style>
 </head>
 
 <body>
+  <div class="wrap">
 
-<div class="topbar">
-  <h2 style="margin:0;">📦 Scanbar.appV2</h2>
-  <span id="modeChip" class="chip">Mode: Nouveau</span>
-</div>
-
-<!-- OPERATEUR -->
-<div class="card">
-  <label>Opérateur *</label>
-  <select id="operator">
-    <option value="">— Sélectionner —</option>
-    <option>Anthony</option>
-    <option>Johan</option>
-    <option>Kéo</option>
-    <option>Michael</option>
-  </select>
-  <div class="muted">Choisi une seule fois par session</div>
-</div>
-
-<!-- HISTORIQUE -->
-<div class="card">
-  <div class="row" style="align-items:center;">
-    <button id="btnToggleHistory" type="button" onclick="toggleHistory()">📜 Scans récents</button>
-    <span id="historyArrow" style="flex:0 0 auto;">▶</span>
-    <button id="btnNewScan" type="button" onclick="clearEdit()">➕ Nouveau scan</button>
-  </div>
-
-  <div id="historyPanel" style="display:none;margin-top:10px;">
-    <div class="row">
-      <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
-      <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
+    <!-- LOGO -->
+    <div class="brand">
+      <img alt="promosdiscount"
+           src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAABQCAYAAAA3ICPMAAAACXBIWXMAAA70AAAO9AABY4L0AAAB7ElEQVR42u3RMQ0AMAgAsO3f9F0xQkYkPZL2o2b0cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaj4qLv5OF///FPG50QXHjiJokEgkUmn1/1icVQ0Eu6mEAAAAAElFTkSuQmCC"/>
     </div>
 
-    <div class="row">
-      <label style="margin:0; font-weight:600; display:flex; gap:8px; align-items:center;">
-        <input type="checkbox" id="filterNoPhoto" onchange="applyFilters()" style="width:auto; margin:0;">
-        Sans photo
-      </label>
-      <label style="margin:0; font-weight:600; display:flex; gap:8px; align-items:center;">
-        <input type="checkbox" id="filterToday" onchange="applyFilters()" style="width:auto; margin:0;">
-        Aujourd’hui
-      </label>
+    <!-- OPERATEUR -->
+    <div class="card">
+      <label>Opérateur *</label>
+      <select id="operator">
+        <option value="">— Sélectionner —</option>
+        <option>Anthony</option>
+        <option>Johan</option>
+        <option>Kéo</option>
+        <option>Michael</option>
+      </select>
+      <div class="hint">Choisi une seule fois par session</div>
     </div>
 
-    <div class="row">
-      <button id="btnRefresh" type="button" onclick="loadRecent()">🔄 Actualiser</button>
-      <button id="btnExport" type="button" onclick="exportCSV()">⬇ Export CSV (filtré)</button>
+    <!-- HISTORY -->
+    <div class="card">
+      <div class="drawerHead">
+        <button class="btn" type="button" onclick="toggleHistory()">📜 Scans récents</button>
+        <div class="arrow" id="historyArrow" onclick="toggleHistory()">▶</div>
+        <button class="btnGhost" type="button" onclick="clearEdit()">➕ Nouveau scan</button>
+      </div>
+
+      <div id="historyPanel">
+        <div class="row">
+          <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
+          <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
+        </div>
+        <div class="row">
+          <button class="btn" type="button" onclick="loadRecent()">🔄 Actualiser</button>
+          <button class="btn" type="button" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+        <div id="recentList" class="muted">Clique “Scans récents” pour charger…</div>
+      </div>
     </div>
 
-    <div id="recentList" style="max-height:260px; overflow-y:auto; margin-top:10px;"></div>
-  </div>
-</div>
+    <!-- SCAN -->
+    <div class="card">
+      <label>Scan EAN / QR</label>
+      <input id="scanInput" placeholder="Scanner ici (douchette)">
 
-<!-- SCAN -->
-<div class="card">
-  <label>Code EAN / QR</label>
-  <input id="scanInput" placeholder="Scanner ici (douchette)" autocomplete="off">
-  <div class="row">
-    <button type="button" onclick="startCameraScan()">📷 Scanner avec l’appareil photo</button>
-    <button type="button" onclick="noEAN()">Produit sans EAN</button>
-    <button type="button" onclick="clearScan()">Effacer</button>
-  </div>
-  <div class="muted">Astuce : après scan, appuie sur Entrée → focus Référence</div>
-</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" type="button" onclick="toggleCamera()">📷 Scanner caméra</button>
+        <button class="btn" type="button" onclick="noEan()">Produit sans EAN</button>
+        <button class="btnGhost" type="button" onclick="resetForm()">Effacer</button>
+      </div>
 
-<!-- PRODUIT -->
-<div class="card">
-  <label>Référence produit *</label>
-  <input id="reference" autocomplete="off">
+      <!-- CAMERA -->
+      <div id="camPanel">
+        <video id="camVideo" playsinline></video>
+        <div class="row" style="margin-top:10px;">
+          <button class="btnGhost" type="button" onclick="stopCamera()">⏹ Stop caméra</button>
+        </div>
+        <div class="camHint" id="camHint">Autorise la caméra. Si ton navigateur ne supporte pas BarcodeDetector, ZXing sera chargé automatiquement.</div>
+      </div>
 
-  <label>Quantité *</label>
-  <input id="quantity" type="number" min="1" autocomplete="off">
-
-  <label>Poids (optionnel)</label>
-  <input id="weight" placeholder="ex: 1200g ou 1.2kg" autocomplete="off">
-
-  <label>Emplacement (optionnel)</label>
-  <input id="location" placeholder="ex: A3-12 / RACK 4" autocomplete="off">
-
-  <label>Dimensions (optionnel)</label>
-  <input id="dimension" placeholder="ex: 30x20x10" autocomplete="off">
-
-  <label>Couleur (optionnel)</label>
-  <input id="color" autocomplete="off">
-
-  <label>Commentaire (optionnel)</label>
-  <textarea id="comment"></textarea>
-</div>
-
-<!-- PHOTOS -->
-<div class="card">
-  <label>Photos (max 3)</label>
-  <input id="photoInput" type="file" accept="image/*" capture="environment" onchange="addImage(this)">
-  <div id="previews"></div>
-  <div class="muted">Photos compressées automatiquement (500×500)</div>
-</div>
-
-<!-- ACTION -->
-<div class="card">
-  <button id="btnSubmit" type="button" onclick="submitScan()">✅ Valider le scan</button>
-  <div id="status" class="muted" style="margin-top:8px;"></div>
-</div>
-
-<!-- overlay envoi -->
-<div id="overlay" class="overlay">
-  <div class="box">
-    <div class="spinner"></div>
-    <div>
-      <div style="font-weight:700;">Envoi en cours…</div>
-      <div class="muted">Ne ferme pas la page</div>
+      <div class="hint">Mode rafale : focus auto sur le scan après validation.</div>
     </div>
-  </div>
-</div>
 
-<div id="toast" class="toast"></div>
+    <!-- PRODUIT -->
+    <div class="card">
+      <label>Référence produit *</label>
+      <input id="reference">
+
+      <label>Quantité *</label>
+      <input id="quantity" type="number" min="1">
+
+      <label>Poids (optionnel)</label>
+      <input id="weight">
+
+      <label>Emplacement (optionnel)</label>
+      <input id="location">
+
+      <label>Dimensions (optionnel)</label>
+      <input id="dimension">
+
+      <label>Couleur (optionnel)</label>
+      <input id="color">
+
+      <label>Commentaire (optionnel)</label>
+      <textarea id="comment"></textarea>
+    </div>
+
+    <!-- PHOTOS -->
+    <div class="card">
+      <label>Photos (max 3)</label>
+      <input id="photoInput" type="file" accept="image/*" capture="environment" multiple>
+      <div class="hint">Jusqu’à 3 photos. Compression auto (500×500 max).</div>
+      <div class="previews" id="previews"></div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="card">
+      <button id="btnSubmit" class="btn btnDanger" type="button" onclick="submitScan()">✅ Valider le scan</button>
+      <div class="loadingBar" id="loadingBar"><div></div></div>
+      <div class="status muted" id="status">Prêt.</div>
+    </div>
+
+  </div>
 
 <script>
-/************ CONFIG ************/
-const API_URL = "https://script.google.com/macros/s/AKfycbyh1-hHVbFG-at9GDAU40q8dqxYkSYLqbO1bLntrIRZVWz7uDwYZcccktSnICFjZBvN/exec";
-const API_TOKEN = "PRO_DISCOUNT02";
+  /******************** CONFIG (CHANGE ONLY THESE 2) ********************/
+  const API_URL = "https://script.google.com/macros/s/AKfycbyh1-hHVbFG-at9GDAU40q8dqxYkSYLqbO1bLntrIRZVWz7uDwYZcccktSnICFjZBvN/exec";
+  const API_TOKEN = "PRO_DISCOUNT02";
+  /************************************************************************/
 
-/************ STATE ************/
-let images = [];
-let noEanFlag = false;
-let editingScanId = null;
+  const operatorEl = document.getElementById("operator");
+  const scanEl = document.getElementById("scanInput");
+  const refEl = document.getElementById("reference");
+  const qtyEl = document.getElementById("quantity");
+  const weightEl = document.getElementById("weight");
+  const locationEl = document.getElementById("location");
+  const dimEl = document.getElementById("dimension");
+  const colorEl = document.getElementById("color");
+  const commentEl = document.getElementById("comment");
+  const photoEl = document.getElementById("photoInput");
+  const previewsEl = document.getElementById("previews");
+  const statusEl = document.getElementById("status");
+  const loadingBar = document.getElementById("loadingBar");
+  const btnSubmit = document.getElementById("btnSubmit");
 
-let recentItemsCache = [];
-let recentItemsFiltered = [];
-let historyOpen = false;
+  const camPanel = document.getElementById("camPanel");
+  const camVideo = document.getElementById("camVideo");
+  const camHint = document.getElementById("camHint");
 
-let isSending = false;
+  let images = [];              // {data_base64, mime, index}
+  let noEanFlag = false;
+  let editingScanId = null;
 
-/************ ELEMENTS ************/
-const operatorEl = document.getElementById("operator");
-const scanEl = document.getElementById("scanInput");
-const refEl = document.getElementById("reference");
-const qtyEl = document.getElementById("quantity");
-const btnSubmit = document.getElementById("btnSubmit");
-const modeChip = document.getElementById("modeChip");
-const overlay = document.getElementById("overlay");
+  let recentItemsCache = [];
+  let historyOpen = false;
 
-/************ SESSION ************/
-operatorEl.value = localStorage.getItem("scanba_operator") || "";
-operatorEl.onchange = () => localStorage.setItem("scanba_operator", operatorEl.value);
+  // scan_method guidance
+  let lastScanMethod = "scanner"; // scanner | phone | manual
 
-/************ UX ************/
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 1200);
-}
-function setStatus(msg, cls="muted") {
-  const s = document.getElementById("status");
-  s.textContent = msg;
-  s.className = cls;
-}
-function setMode(mode) { modeChip.textContent = "Mode: " + mode; }
-function focusScan(){ setTimeout(() => scanEl.focus(), 50); }
-function focusRef(){ setTimeout(() => refEl.focus(), 50); }
-function focusQty(){ setTimeout(() => qtyEl.focus(), 50); }
-function focusSubmit(){ setTimeout(() => btnSubmit.focus(), 50); }
+  // Camera
+  let camStream = null;
+  let camTimer = null;
+  let barcodeDetector = null;
+  let zxingReader = null;
+  let zxingLoaded = false;
 
-function setSending(on){
-  isSending = on;
-  overlay.style.display = on ? "flex" : "none";
-  btnSubmit.disabled = on;
-  document.getElementById("btnToggleHistory").disabled = on;
-  document.getElementById("btnNewScan").disabled = on;
-}
-
-/************ WORKFLOW FOCUS (Entrée) ************/
-scanEl.addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); focusRef(); }
-});
-
-refEl.addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); focusQty(); }
-});
-
-qtyEl.addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); focusSubmit(); }
-});
-
-/************ SCAN ************/
-function noEAN(){
-  noEanFlag = true;
-  scanEl.value = "";
-  toast("Sans EAN");
-  setStatus("Produit sans EAN (code interne généré)", "ok");
-  focusRef(); // logique: sans EAN -> on passe à la référence
-}
-function clearScan(){
-  noEanFlag = false;
-  scanEl.value = "";
-  focusScan();
-}
-
-/************ CAMERA SCAN ************/
-let camStream = null, detector = null;
-
-async function startCameraScan() {
-  if (!("BarcodeDetector" in window)) {
-    alert("Scan caméra non supporté sur ce navigateur.\nUtilise la douchette.");
-    return;
-  }
-  try {
-    detector = new BarcodeDetector({ formats: ["ean_13","ean_8","qr_code"] });
-
-    const video = document.createElement("video");
-    video.setAttribute("playsinline", true);
-    video.style.width = "100%";
-    video.style.borderRadius = "10px";
-
-    const box = document.createElement("div");
-    box.className = "card";
-    box.appendChild(video);
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "✖ Fermer la caméra";
-    btn.onclick = () => stopCamera(box);
-    box.appendChild(btn);
-
-    document.body.prepend(box);
-
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    video.srcObject = camStream;
-    await video.play();
-
-    (function loop(){
-      detector.detect(video).then(codes => {
-        if (codes.length) {
-          scanEl.value = codes[0].rawValue;
-          toast("Code détecté ✔");
-          stopCamera(box);
-          focusRef(); // IMPORTANT: après caméra -> focus référence
-        } else requestAnimationFrame(loop);
-      }).catch(() => requestAnimationFrame(loop));
-    })();
-
-  } catch (e) {
-    alert("Impossible d'accéder à la caméra.");
-  }
-}
-function stopCamera(box){
-  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  if (box) box.remove();
-}
-
-/************ IMAGES ************/
-function addImage(input) {
-  if (!input.files[0]) return;
-  if (images.length >= 3) return setStatus("Max 3 photos", "err");
-
-  const file = input.files[0];
-  resizeImage(file, 500, data => {
-    images.push({ index: images.length + 1, data });
-    renderPreviews();
-    toast("Photo ajoutée");
-  });
-  input.value = "";
-}
-
-function resizeImage(file, max, cb) {
-  const img = new Image();
-  const reader = new FileReader();
-  reader.onload = e => {
-    img.onload = () => {
-      const scale = Math.min(max / img.width, max / img.height, 1);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-      cb(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function renderPreviews() {
-  const div = document.getElementById("previews");
-  div.innerHTML = "";
-  images.forEach(i => {
-    const im = document.createElement("img");
-    im.src = "data:image/jpeg;base64," + i.data;
-    im.className = "preview";
-    div.appendChild(im);
-  });
-}
-
-/************ HISTORY ************/
-function toggleHistory(){
-  historyOpen = !historyOpen;
-  document.getElementById("historyPanel").style.display = historyOpen ? "block" : "none";
-  document.getElementById("historyArrow").textContent = historyOpen ? "▼" : "▶";
-  if (historyOpen && !recentItemsCache.length) loadRecent();
-}
-
-function loadRecent(){
-  const operator = operatorEl.value.trim();
-  if (!operator) return setStatus("Sélectionne l'opérateur d'abord", "err");
-
-  setStatus("Chargement scans récents…");
-
-  const payload = {
-    token: API_TOKEN,
-    action: "LIST_RECENT",
-    client: { operator, device: navigator.userAgent },
-    limit: 120
-  };
-
-  fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(r => {
-    if (!r.ok) throw new Error(r.error || "Erreur");
-    recentItemsCache = r.items || [];
-    applyFilters();
-    setStatus("OK", "ok");
-  })
-  .catch(e => setStatus(e.message, "err"));
-}
-
-function isToday_(val){
-  if (!val) return false;
-  const d = new Date(val);
-  if (isNaN(d.getTime())) return false;
-  const now = new Date();
-  return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
-}
-
-function applyFilters(){
-  const ref = (document.getElementById("filterRef").value || "").toLowerCase();
-  const code = (document.getElementById("filterCode").value || "").toLowerCase();
-  const noPhoto = !!document.getElementById("filterNoPhoto").checked;
-  const today = !!document.getElementById("filterToday").checked;
-
-  const filtered = recentItemsCache.filter(it => {
-    const r = String(it.product_reference || "").toLowerCase();
-    const c = String(it.code_value || "").toLowerCase();
-    const hasImg = !!(it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw);
-    return (!ref || r.includes(ref)) &&
-           (!code || c.includes(code)) &&
-           (!noPhoto || !hasImg) &&
-           (!today || isToday_(it.scan_timestamp));
+  // Persist operator per session (localStorage)
+  const OP_KEY = "scanbar_operator";
+  operatorEl.addEventListener("change", () => {
+    const v = operatorEl.value.trim();
+    if (v) localStorage.setItem(OP_KEY, v);
   });
 
-  recentItemsFiltered = filtered;
-  renderRecent(filtered);
-}
+  window.addEventListener("load", () => {
+    const saved = localStorage.getItem(OP_KEY) || "";
+    if (saved) operatorEl.value = saved;
+    setTimeout(() => scanEl.focus(), 150);
+  });
 
-function renderRecent(items){
-  const div = document.getElementById("recentList");
-  if (!items.length) {
-    div.innerHTML = "<div class='muted'>Aucun scan.</div>";
-    return;
+  // Enter key workflow
+  scanEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); lastScanMethod = "scanner"; refEl.focus(); }
+  });
+  refEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); qtyEl.focus(); }
+  });
+  qtyEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); btnSubmit.focus(); }
+  });
+
+  // If user types/pastes manually in scan field => scanner
+  scanEl.addEventListener("input", () => { if (!noEanFlag) lastScanMethod = "scanner"; });
+
+  function setStatus(msg, cls="muted"){
+    statusEl.className = "status " + cls;
+    statusEl.textContent = msg;
+  }
+  function setLoading(on){
+    loadingBar.style.display = on ? "block" : "none";
+    btnSubmit.disabled = !!on;
   }
 
-  div.innerHTML = items.slice(0, 120).map(it => {
-    const ts = it.scan_timestamp ? String(it.scan_timestamp) : "";
-    const code = it.code_value ? String(it.code_value) : "";
-    const ref = it.product_reference ? String(it.product_reference) : "";
-    const qty = it.quantity ? String(it.quantity) : "";
-    const hasImg = (it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw) ? "📷" : "";
-
-    // IMPORTANT: bouton Ouvrir -> mode édition (préremplissage)
-    return `
-      <div class="item">
-        <div><b>${ref}</b> · Qté ${qty} ${hasImg}</div>
-        <div class="muted">${ts} · ${code}</div>
-        <button type="button" style="margin-top:6px;" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir / éditer</button>
-      </div>
-    `;
-  }).join("");
-}
-
-/************ EDIT MODE ************/
-function selectRecent(item){
-  editingScanId = item.scan_id;
-
-  scanEl.value = item.code_value || "";
-  document.getElementById("reference").value = item.product_reference || "";
-  document.getElementById("quantity").value = item.quantity || "";
-
-  // nouveaux champs
-  document.getElementById("weight").value = item.weight || "";
-  document.getElementById("location").value = item.location || "";
-  document.getElementById("dimension").value = item.dimension || "";
-
-  document.getElementById("color").value = item.color || "";
-  document.getElementById("comment").value = item.comment || "";
-
-  images = [];              // on laisse les anciennes photos côté sheet, ici on repart à vide
-  noEanFlag = (String(item.code_type || "").toUpperCase() === "INTERNAL");
-  renderPreviews();
-
-  btnSubmit.textContent = "💾 Mettre à jour";
-  setMode("Édition");
-  setStatus("Mode édition : modifie puis clique Mettre à jour", "ok");
-  toast("Édition");
-  focusRef();
-}
-
-function clearEdit(){
-  editingScanId = null;
-  btnSubmit.textContent = "✅ Valider le scan";
-  setMode("Nouveau");
-  resetForm();
-  setStatus("Mode nouveau scan", "muted");
-  toast("Nouveau scan");
-}
-
-/************ EXPORT CSV ************/
-function exportCSV(){
-  const data = recentItemsFiltered.length ? recentItemsFiltered : recentItemsCache;
-  if (!data.length) return setStatus("Aucune donnée à exporter", "err");
-
-  const headers = [
-    "scan_timestamp",
-    "operator",
-    "code_type",
-    "code_value",
-    "product_reference",
-    "quantity",
-    "weight",
-    "location",
-    "dimension",
-    "color",
-    "comment",
-    "image_folder_url"
-  ];
-
-  const rows = data.map(it =>
-    headers.map(h => `"${String(it[h] || "").replace(/"/g, '""')}"`).join(";")
-  );
-
-  const csv = headers.join(";") + "\n" + rows.join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "scanbar_export.csv";
-  a.click();
-
-  URL.revokeObjectURL(url);
-  toast("CSV exporté");
-}
-
-/************ SUBMIT ************/
-function submitScan(){
-  if (isSending) return;
-
-  const operator = operatorEl.value.trim();
-  const reference = document.getElementById("reference").value.trim();
-  const quantity = Number(document.getElementById("quantity").value);
-
-  if (!operator) return toast("Choisis l'opérateur");
-  if (!reference || !Number.isFinite(quantity) || quantity < 1) {
-    setStatus("Référence + quantité obligatoires (>=1)", "err");
-    toast("Champs manquants");
-    return;
+  // Drawer
+  function toggleHistory(){
+    historyOpen = !historyOpen;
+    document.getElementById("historyPanel").style.display = historyOpen ? "block" : "none";
+    document.getElementById("historyArrow").textContent = historyOpen ? "▼" : "▶";
+    if (historyOpen && !recentItemsCache.length) loadRecent();
   }
 
-  const payload = {
-    token: API_TOKEN,
-    action: editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN",
-    scan_id: editingScanId || "",
-    client: { operator, device: navigator.userAgent },
-    scan: {
-      scan_method: "scanner",
-      code_value: noEanFlag ? "" : scanEl.value.trim(),
-      no_ean: noEanFlag
-    },
-    product: {
-      product_reference: reference,
-      quantity: quantity,
-      weight: document.getElementById("weight").value.trim(),
-      location: document.getElementById("location").value.trim(),
-      dimension: document.getElementById("dimension").value.trim(),
-      color: document.getElementById("color").value.trim(),
-      comment: document.getElementById("comment").value.trim()
-    },
-    images: {
-      items: images.map(i => ({
-        index: i.index,
-        filename: `IMG_${i.index}.jpg`,
-        mime: "image/jpeg",
-        data_base64: i.data
-      }))
-    }
-  };
+  function applyFilters(){
+    const ref = (document.getElementById("filterRef").value || "").toLowerCase();
+    const code = (document.getElementById("filterCode").value || "").toLowerCase();
+    const filtered = recentItemsCache.filter(it => {
+      const r = String(it.product_reference || "").toLowerCase();
+      const c = String(it.code_value || "").toLowerCase();
+      return (!ref || r.includes(ref)) && (!code || c.includes(code));
+    });
+    renderRecent(filtered);
+  }
 
-  setSending(true);
-  setStatus(editingScanId ? "Mise à jour…" : "Envoi…");
+  function exportCSV(){
+    if (!recentItemsCache.length) return setStatus("Aucune donnée à exporter", "err");
+    const headers = [
+      "scan_timestamp","operator","scan_method","code_type","code_value",
+      "product_reference","quantity","weight","location","dimension",
+      "color","comment","image_folder_url","image_1_url_raw","image_2_url_raw","image_3_url_raw"
+    ];
+    const rows = recentItemsCache.map(it => headers.map(h => `"${String(it[h]||"").replace(/"/g,'""')}"`).join(";"));
+    const csv = headers.join(";") + "\n" + rows.join("\n");
 
-  fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(r => {
-    if (!r.ok) throw new Error(r.error || "Erreur");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "scanbar_export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
-    // succès
+  // No EAN
+  function noEan(){
+    noEanFlag = true;
+    lastScanMethod = "manual";
+    scanEl.value = "";
+    setStatus("Mode sans EAN : un code interne sera généré", "ok");
+    refEl.focus();
+  }
+
+  // Reset / clear edit
+  function resetForm(){
+    stopCamera();
+    scanEl.value = "";
+    refEl.value = "";
+    qtyEl.value = "";
+    weightEl.value = "";
+    locationEl.value = "";
+    dimEl.value = "";
+    colorEl.value = "";
+    commentEl.value = "";
+    images = [];
+    noEanFlag = false;
+    lastScanMethod = "scanner";
     editingScanId = null;
     btnSubmit.textContent = "✅ Valider le scan";
-    setMode("Nouveau");
+    photoEl.value = "";
+    renderPreviews();
+    setStatus("Prêt.", "muted");
+    setTimeout(()=>scanEl.focus(), 50);
+  }
+
+  function clearEdit(){
+    editingScanId = null;
+    btnSubmit.textContent = "✅ Valider le scan";
     resetForm();
-    setStatus("OK ✔", "ok");
-    toast("Enregistré ✔");
+    setStatus("Mode nouveau scan", "muted");
+  }
 
-    if (historyOpen) loadRecent();
-  })
-  .catch(e => {
-    setStatus(e.message, "err");
-    toast("Erreur");
-  })
-  .finally(() => {
-    setSending(false);
-    focusScan();
+  // Photos
+  photoEl.addEventListener("change", async () => {
+    const files = Array.from(photoEl.files || []).slice(0, 3);
+    images = [];
+    for (let i=0; i<files.length; i++){
+      const b64 = await fileToBase64Compressed_(files[i], 500, 0.75);
+      images.push({ index: i+1, data_base64: b64.base64, mime: b64.mime });
+    }
+    renderPreviews();
   });
-}
 
-/************ RESET ************/
-function resetForm(){
-  scanEl.value = "";
-  document.getElementById("reference").value = "";
-  document.getElementById("quantity").value = "";
-  document.getElementById("weight").value = "";
-  document.getElementById("location").value = "";
-  document.getElementById("dimension").value = "";
-  document.getElementById("color").value = "";
-  document.getElementById("comment").value = "";
-  images = [];
-  noEanFlag = false;
-  renderPreviews();
-  focusScan();
-}
+  function renderPreviews(){
+    previewsEl.innerHTML = "";
+    if (!images.length) return;
 
-// Init
-setMode("Nouveau");
-focusScan();
+    images.forEach((img, idx) => {
+      const div = document.createElement("div");
+      div.className = "preview";
+      const im = document.createElement("img");
+      im.src = `data:${img.mime};base64,${img.data_base64}`;
+      const x = document.createElement("button");
+      x.className = "x";
+      x.textContent = "×";
+      x.onclick = () => { images.splice(idx,1); renderPreviews(); };
+      div.appendChild(im);
+      div.appendChild(x);
+      previewsEl.appendChild(div);
+    });
+  }
+
+  // Payload
+  function payloadBase(action){
+    const scan_method = (images.length ? "phone" : lastScanMethod);
+    return {
+      version: 1,
+      token: API_TOKEN,
+      action,
+      client: { operator: operatorEl.value.trim(), device: navigator.userAgent },
+      scan: {
+        scan_method,
+        no_ean: !!noEanFlag,
+        code_value: (scanEl.value || "").trim()
+      },
+      product: {
+        product_reference: (refEl.value || "").trim(),
+        quantity: Number(qtyEl.value || 0),
+        weight: (weightEl.value || "").trim(),
+        location: (locationEl.value || "").trim(),
+        dimension: (dimEl.value || "").trim(),
+        color: (colorEl.value || "").trim(),
+        comment: (commentEl.value || "").trim()
+      },
+      images: { items: images }
+    };
+  }
+
+  async function submitScan(){
+    const operator = operatorEl.value.trim();
+    if (!operator) return setStatus("Sélectionne l'opérateur", "err");
+
+    const ref = refEl.value.trim();
+    const qty = Number(qtyEl.value || 0);
+    if (!ref) return setStatus("Référence obligatoire", "err");
+    if (!qty || qty < 1) return setStatus("Quantité obligatoire (>=1)", "err");
+
+    const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
+    const payload = payloadBase(action);
+    if (editingScanId) payload.scan_id = editingScanId;
+
+    setLoading(true);
+    setStatus("Envoi en cours…", "muted");
+
+    try{
+      const r = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "Erreur");
+
+      setStatus(editingScanId ? "✅ Mise à jour OK" : "✅ Scan OK", "ok");
+
+      // Keep operator; clear rest
+      stopCamera();
+      scanEl.value = "";
+      refEl.value = "";
+      qtyEl.value = "";
+      weightEl.value = "";
+      locationEl.value = "";
+      dimEl.value = "";
+      colorEl.value = "";
+      commentEl.value = "";
+      images = [];
+      noEanFlag = false;
+      lastScanMethod = "scanner";
+      editingScanId = null;
+      btnSubmit.textContent = "✅ Valider le scan";
+      photoEl.value = "";
+      renderPreviews();
+
+      setTimeout(()=>scanEl.focus(), 120);
+      if (historyOpen) loadRecent();
+
+    }catch(e){
+      setStatus(String(e.message || e), "err");
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  // Recent list
+  function loadRecent(){
+    const operator = operatorEl.value.trim();
+    if (!operator) return setStatus("Sélectionne l'opérateur d'abord", "err");
+
+    setStatus("Chargement scans récents…", "muted");
+
+    const payload = {
+      version: 1,
+      token: API_TOKEN,
+      action: "LIST_RECENT",
+      client: { operator, device: navigator.userAgent },
+      limit: 120
+    };
+
+    fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(j => {
+      if (!j.ok) throw new Error(j.error || "Erreur");
+      recentItemsCache = j.items || [];
+      applyFilters();
+      setStatus("OK", "ok");
+    })
+    .catch(e => setStatus(e.message, "err"));
+  }
+
+  function renderRecent(items){
+    const div = document.getElementById("recentList");
+    if (!items.length) {
+      div.innerHTML = "<div class='muted'>Aucun scan récent.</div>";
+      return;
+    }
+
+    div.innerHTML = items.slice(0, 60).map(it => {
+      const ts = it.scan_timestamp ? String(it.scan_timestamp) : "";
+      const code = it.code_value ? String(it.code_value) : "";
+      const ref = it.product_reference ? String(it.product_reference) : "";
+      const qty = it.quantity ? String(it.quantity) : "";
+      const hasImg = (it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw) ? "📷" : "";
+      return `
+        <div class="item">
+          <div><b>${escapeHtml_(ref)}</b> · Qté ${escapeHtml_(qty)} ${hasImg}</div>
+          <div class="small">${escapeHtml_(ts)} · ${escapeHtml_(code)}</div>
+          <button class="btn" type="button" style="margin-top:8px;" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir</button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function selectRecent(item){
+    editingScanId = item.scan_id;
+
+    scanEl.value = item.code_value || "";
+    refEl.value = item.product_reference || "";
+    qtyEl.value = item.quantity || "";
+    weightEl.value = item.weight || "";
+    locationEl.value = item.location || "";
+    dimEl.value = item.dimension || "";
+    colorEl.value = item.color || "";
+    commentEl.value = item.comment || "";
+
+    images = [];
+    noEanFlag = (String(item.code_type || "").toUpperCase() === "INTERNAL");
+    lastScanMethod = String(item.scan_method || "scanner").toLowerCase() || "scanner";
+
+    btnSubmit.textContent = "💾 Mettre à jour";
+    setStatus("Mode édition : modifie + ajoute photos si besoin", "ok");
+
+    setTimeout(()=>scanEl.focus(), 50);
+  }
+
+  // Camera scan (EAN / QR)
+  async function toggleCamera(){
+    if (camStream) return stopCamera();
+    camPanel.style.display = "block";
+    camHint.textContent = "Démarrage caméra…";
+    try{
+      lastScanMethod = "phone";
+      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio:false });
+      camVideo.srcObject = camStream;
+      await camVideo.play();
+
+      // Prefer BarcodeDetector
+      if ("BarcodeDetector" in window) {
+        try{
+          barcodeDetector = new BarcodeDetector({ formats: ["ean_13","ean_8","qr_code","code_128"] });
+          camHint.textContent = "Caméra OK — détection en cours (BarcodeDetector)…";
+          startDetectLoop_BarcodeDetector_();
+          return;
+        } catch(e){
+          barcodeDetector = null;
+        }
+      }
+
+      // Fallback ZXing
+      camHint.textContent = "BarcodeDetector indisponible — chargement ZXing…";
+      await loadZXing_();
+      camHint.textContent = zxingLoaded ? "ZXing chargé — détection en cours…" : "ZXing non chargé (réseau/CDN). Utilise la douchette.";
+      if (zxingLoaded) startDetectLoop_ZXing_();
+
+    }catch(e){
+      camHint.textContent = "Caméra refusée / indisponible. Utilise la douchette.";
+      stopCamera();
+      setStatus(String(e.message || e), "err");
+    }
+  }
+
+  function stopCamera(){
+    if (camTimer){ clearInterval(camTimer); camTimer = null; }
+    if (zxingReader){ try{ zxingReader.reset(); }catch(_){ } }
+    barcodeDetector = null;
+
+    if (camStream){
+      camStream.getTracks().forEach(t => t.stop());
+      camStream = null;
+    }
+    camVideo.srcObject = null;
+    camPanel.style.display = "none";
+  }
+
+  function startDetectLoop_BarcodeDetector_(){
+    if (!barcodeDetector) return;
+    if (camTimer) clearInterval(camTimer);
+
+    camTimer = setInterval(async () => {
+      try{
+        const codes = await barcodeDetector.detect(camVideo);
+        if (codes && codes.length){
+          const val = String(codes[0].rawValue || "").trim();
+          if (val){
+            onDetectedCode_(val);
+          }
+        }
+      }catch(_){}
+    }, 250);
+  }
+
+  function startDetectLoop_ZXing_(){
+    if (!zxingLoaded) return;
+    if (camTimer) clearInterval(camTimer);
+
+    try{
+      zxingReader = new ZXing.BrowserMultiFormatReader();
+      camTimer = setInterval(async () => {
+        try{
+          const result = await zxingReader.decodeOnceFromVideoElement(camVideo);
+          if (result && result.text){
+            onDetectedCode_(String(result.text).trim());
+          }
+        }catch(_){}
+      }, 600);
+    }catch(_){
+      camHint.textContent = "ZXing error. Utilise la douchette.";
+    }
+  }
+
+  function onDetectedCode_(val){
+    stopCamera();
+    scanEl.value = val;
+    lastScanMethod = "phone";
+    setStatus("Code détecté ✅", "ok");
+    setTimeout(()=>refEl.focus(), 80);
+  }
+
+  function loadZXing_(){
+    return new Promise((resolve) => {
+      if (window.ZXing) { zxingLoaded = true; return resolve(); }
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js";
+      s.onload = () => { zxingLoaded = !!window.ZXing; resolve(); };
+      s.onerror = () => { zxingLoaded = false; resolve(); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // Utils
+  function escapeHtml_(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // Compression image => max 500px, qualité ~0.75
+  function fileToBase64Compressed_(file, maxSize=500, quality=0.75){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let w = img.width, h = img.height;
+          const scale = Math.min(1, maxSize / Math.max(w,h));
+          w = Math.round(w*scale); h = Math.round(h*scale);
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const mime = "image/jpeg";
+          const dataUrl = canvas.toDataURL(mime, quality);
+          const base64 = dataUrl.split(",")[1];
+          resolve({ base64, mime });
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 </script>
 
 </body>
