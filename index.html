@@ -43,7 +43,7 @@
       padding: 0 14px;
     }
 
-    /* HEADER : badge à gauche + logo centré */
+    /* HEADER : badge à gauche + logo centré + menu à droite */
     .headerBar{
       display:flex;
       align-items:center;
@@ -63,7 +63,6 @@
       box-shadow: 0 2px 0 rgba(0,0,0,.08);
       user-select:none;
     }
-    .appBadgeGhost{ visibility:hidden; }
 
     .brandCenter{
       flex:1;
@@ -75,6 +74,23 @@
       max-height: 62px;
       width:auto;
       display:block;
+    }
+
+    /* MENU BUTTON */
+    .menuBtn{
+      width:44px;
+      height:44px;
+      border-radius: 12px;
+      border:1px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      font-size: 20px;
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 2px 0 rgba(0,0,0,.04);
+      user-select:none;
     }
 
     /* CARDS */
@@ -171,44 +187,6 @@
       100%{transform:translateX(260%)}
     }
 
-    /* HISTORY DRAWER */
-    .drawerHead{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-    .arrow{
-      width:38px;
-      height:44px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-size:18px;
-      cursor:pointer;
-      user-select:none;
-    }
-    #historyPanel{ display:none; margin-top:10px; }
-    #recentList{
-      margin-top:10px;
-      max-height: 320px;
-      overflow:auto;
-      border:1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
-      background:#fff;
-    }
-    .item{
-      border:1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .item:last-child{margin-bottom:0}
-    .small{font-size:12px;color:var(--muted)}
-
     /* PHOTO PREVIEWS */
     .previews{
       display:flex;
@@ -271,20 +249,156 @@
     }
     #expressBanner b{ color: var(--red); }
 
+    /* DRAWERS / OVERLAYS */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.25);
+      display:none;
+      z-index: 50;
+    }
+    .drawer{
+      position:fixed;
+      top:0; right:0;
+      width: 320px;
+      max-width: 86vw;
+      height: 100%;
+      background:#fff;
+      border-left:1px solid var(--border);
+      box-shadow: -10px 0 30px rgba(0,0,0,.12);
+      padding: 14px;
+      transform: translateX(110%);
+      transition: transform .16s ease;
+      z-index: 60;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .drawer.open{ transform: translateX(0); }
+    .drawerTitle{
+      font-weight: 900;
+      font-size: 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .drawerClose{
+      border:none;
+      background:#fff;
+      font-size: 22px;
+      cursor:pointer;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .drawer .btn, .drawer .btnGhost{ width:100%; }
+
+    /* FULL PANEL (Scans récents) */
+    .panel{
+      position:fixed;
+      inset:0;
+      background: #fff;
+      z-index: 70;
+      display:none;
+      overflow:auto;
+    }
+    .panelHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top:0;
+      background:#fff;
+      z-index: 2;
+      gap: 10px;
+    }
+    .panelHeader .title{
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .panelBody{
+      padding: 14px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    #recentList{
+      margin-top:10px;
+      max-height: 70vh;
+      overflow:auto;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background:#fff;
+    }
+    .item{
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .item:last-child{margin-bottom:0}
+    .small{font-size:12px;color:var(--muted)}
+
     /* Mobile logo smaller */
     @media (max-width:520px){
       .brandCenter img{ max-height: 42px; }
       .btn{ width:100%; }
       .row > *{ flex:1 1 100%; }
-      .drawerHead{flex-wrap:wrap;}
-      .arrow{width:100%; height:42px;}
-      .appBadge, .appBadgeGhost{ font-size: 13px; padding: 8px 10px; }
+      .appBadge{ font-size: 13px; padding: 8px 10px; }
+      .menuBtn{ width:42px; height:42px; }
     }
   </style>
 </head>
 
 <body>
   <div class="topbar"></div>
+
+  <!-- Overlay + drawer menu -->
+  <div id="menuOverlay" class="overlay" onclick="closeMenu()"></div>
+
+  <div id="menuDrawer" class="drawer" aria-hidden="true">
+    <div class="drawerTitle">
+      <span>Menu</span>
+      <button class="drawerClose" type="button" onclick="closeMenu()">×</button>
+    </div>
+
+    <button class="btn" type="button" onclick="openRecentPanel()">📜 Scans récents</button>
+
+    <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express (PIN)</button>
+    <button class="btn" type="button" onclick="addOperator()">➕ Ajouter opérateur (PIN)</button>
+    <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Supprimer opérateur (PIN)</button>
+
+    <div class="hint">
+      Conseil : laisse l’écran principal le plus simple possible (scan → ref → qty → valider).
+    </div>
+  </div>
+
+  <!-- Panel Scans récents -->
+  <div id="recentPanel" class="panel">
+    <div class="panelHeader">
+      <div class="title">📜 Scans récents</div>
+      <button class="btnGhost" type="button" onclick="closeRecentPanel()">✖ Fermer</button>
+    </div>
+
+    <div class="panelBody">
+      <div class="row">
+        <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
+        <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" type="button" onclick="loadRecent()">🔄 Actualiser</button>
+        <button class="btn" type="button" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btnGhost" type="button" onclick="clearEdit()">➕ Nouveau scan</button>
+      </div>
+
+      <div id="recentList" class="muted" style="margin-top:10px;">Clique “Actualiser” pour charger…</div>
+    </div>
+  </div>
 
   <div class="wrap">
 
@@ -293,47 +407,16 @@
       <div class="appBadge">Scanbar.appV2</div>
 
       <div class="brandCenter">
-        <!-- IMPORTANT : logo.png doit être dans le repo, au même niveau que index.html -->
-        <img src="logo.png?v=4" alt="promosdiscount">
+        <img src="logo.png?v=5" alt="promosdiscount">
       </div>
 
-      <div class="appBadge appBadgeGhost">Scanbar.appV2</div>
+      <button class="menuBtn" type="button" onclick="openMenu()" aria-label="Menu">☰</button>
     </div>
 
-    <!-- OPERATEUR -->
+    <!-- OPERATEUR (minimal) -->
     <div class="card">
       <label>Opérateur *</label>
-
-      <div class="row">
-        <select id="operator"></select>
-
-        <!-- Gestion opérateurs (PIN) -->
-        <button class="btn" type="button" onclick="addOperator()">➕ Ajouter</button>
-        <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Retirer</button>
-      </div>
-    </div>
-
-    <!-- HISTORY -->
-    <div class="card">
-      <div class="drawerHead">
-        <button class="btn" type="button" onclick="toggleHistory()">📜 Scans récents</button>
-        <div class="arrow" id="historyArrow" onclick="toggleHistory()">▶</div>
-        <button class="btnGhost" type="button" onclick="clearEdit()">➕ Nouveau scan</button>
-      </div>
-
-      <div id="historyPanel">
-        <div class="row">
-          <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
-          <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
-        </div>
-
-        <div class="row">
-          <button class="btn" type="button" onclick="loadRecent()">🔄 Actualiser</button>
-          <button class="btn" type="button" onclick="exportCSV()">⬇ Export CSV</button>
-        </div>
-
-        <div id="recentList" class="muted">Clique “Scans récents” pour charger…</div>
-      </div>
+      <select id="operator"></select>
     </div>
 
     <!-- SCAN -->
@@ -343,7 +426,6 @@
 
       <div class="row" style="margin-top:10px;">
         <button class="btn" type="button" onclick="toggleCamera()">📷 Scanner caméra</button>
-        <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express (PIN)</button>
         <button class="btn" type="button" onclick="noEan()">Produit sans EAN</button>
         <button class="btnGhost" type="button" onclick="resetForm()">Effacer</button>
       </div>
@@ -432,6 +514,40 @@
   const PIN_2121 = "2121";
   /*********************************************************************/
 
+  // Menu / panels
+  const menuOverlay = document.getElementById("menuOverlay");
+  const menuDrawer  = document.getElementById("menuDrawer");
+  const recentPanel = document.getElementById("recentPanel");
+
+  function openMenu(){
+    menuOverlay.style.display = "block";
+    menuDrawer.classList.add("open");
+    menuDrawer.setAttribute("aria-hidden","false");
+  }
+  function closeMenu(){
+    menuOverlay.style.display = "none";
+    menuDrawer.classList.remove("open");
+    menuDrawer.setAttribute("aria-hidden","true");
+  }
+
+  function openRecentPanel(){
+    closeMenu();
+    recentPanel.style.display = "block";
+    // charge auto si vide
+    if (!recentItemsCache.length) loadRecent();
+  }
+  function closeRecentPanel(){
+    recentPanel.style.display = "none";
+  }
+
+  // ESC pour fermer
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape"){
+      closeMenu();
+      closeRecentPanel();
+    }
+  });
+
   const operatorEl = document.getElementById("operator");
   const scanEl = document.getElementById("scanInput");
   const refEl = document.getElementById("reference");
@@ -459,8 +575,6 @@
   let editingScanId = null;
 
   let recentItemsCache = [];
-  let historyOpen = false;
-
   let lastScanMethod = "scanner"; // scanner | phone | manual
 
   // Camera
@@ -751,14 +865,6 @@
     btnSubmit.disabled = !!on;
   }
 
-  // Drawer
-  function toggleHistory(){
-    historyOpen = !historyOpen;
-    document.getElementById("historyPanel").style.display = historyOpen ? "block" : "none";
-    document.getElementById("historyArrow").textContent = historyOpen ? "▼" : "▶";
-    if (historyOpen && !recentItemsCache.length) loadRecent();
-  }
-
   function applyFilters(){
     const ref = (document.getElementById("filterRef").value || "").toLowerCase();
     const code = (document.getElementById("filterCode").value || "").toLowerCase();
@@ -825,7 +931,7 @@
     setStatus("Mode nouveau scan", "muted");
   }
 
-  // Photos : UNE PAR UNE (beaucoup plus stable sur mobile)
+  // Photos : UNE PAR UNE
   photoEl.addEventListener("change", async () => {
     try{
       const file = (photoEl.files && photoEl.files[0]) ? photoEl.files[0] : null;
@@ -969,7 +1075,6 @@
       }
 
       setTimeout(()=>scanEl.focus(), 120);
-      if (historyOpen) loadRecent();
 
     }catch(e){
       setStatus(String(e.message || e), "err");
@@ -1053,6 +1158,7 @@
     btnSubmit.textContent = "💾 Mettre à jour";
     setStatus("Mode édition : modifie + ajoute photos si besoin", "ok");
 
+    closeRecentPanel();
     setTimeout(()=>scanEl.focus(), 50);
   }
 
@@ -1163,11 +1269,10 @@
       .replaceAll("&","&amp;")
       .replaceAll("<","&lt;")
       .replaceAll(">","&gt;")
-      .replaceAll('"',"quot;")
+      .replaceAll('"',"&quot;")
       .replaceAll("'","&#039;");
   }
 
-  // Compression image => max 500px, qualité ~0.75
   function fileToBase64Compressed_(file, maxSize=500, quality=0.75){
     return new Promise((resolve, reject) => {
       const img = new Image();
