@@ -271,27 +271,9 @@
     }
     #expressBanner b{ color: var(--red); }
 
-    /* Tiny help row */
-    .microRow{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .pill{
-      display:inline-block;
-      border:1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      color: var(--muted);
-      background:#fff;
-      user-select:none;
-    }
-
+    /* Mobile logo smaller */
     @media (max-width:520px){
-      .brandCenter img{ max-height: 42px; } /* logo plus petit sur mobile */
+      .brandCenter img{ max-height: 42px; }
       .btn{ width:100%; }
       .row > *{ flex:1 1 100%; }
       .drawerHead{flex-wrap:wrap;}
@@ -312,7 +294,7 @@
 
       <div class="brandCenter">
         <!-- IMPORTANT : logo.png doit être dans le repo, au même niveau que index.html -->
-        <img src="logo.png?v=3" alt="promosdiscount">
+        <img src="logo.png?v=4" alt="promosdiscount">
       </div>
 
       <div class="appBadge appBadgeGhost">Scanbar.appV2</div>
@@ -325,10 +307,11 @@
       <div class="row">
         <select id="operator"></select>
 
-        <!-- Gestion opérateurs (protégée PIN) -->
+        <!-- Gestion opérateurs (PIN) -->
         <button class="btn" type="button" onclick="addOperator()">➕ Ajouter</button>
         <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Retirer</button>
       </div>
+    </div>
 
     <!-- HISTORY -->
     <div class="card">
@@ -347,11 +330,6 @@
         <div class="row">
           <button class="btn" type="button" onclick="loadRecent()">🔄 Actualiser</button>
           <button class="btn" type="button" onclick="exportCSV()">⬇ Export CSV</button>
-        </div>
-
-        <div class="microRow">
-          <span class="pill">Astuce : utilise “Ouvrir” pour compléter plus tard (photos / infos)</span>
-          <span class="pill">Le bouton “Mettre à jour” remplace “Valider” en mode édition</span>
         </div>
 
         <div id="recentList" class="muted">Clique “Scans récents” pour charger…</div>
@@ -427,11 +405,11 @@
       <textarea id="comment"></textarea>
     </div>
 
-    <!-- PHOTOS -->
+    <!-- PHOTOS (UNE PAR UNE) -->
     <div class="card">
       <label>Photos (max 3)</label>
       <input id="photoInput" type="file" accept="image/*" capture="environment">
-      <div class="hint">Jusqu’à 3 photos. Compression auto (500×500 max).</div>
+      <div class="hint">Ajoute les photos une par une (jusqu’à 3). Compression auto (500×500 max).</div>
       <div class="previews" id="previews"></div>
     </div>
 
@@ -492,14 +470,39 @@
   let zxingReader = null;
   let zxingLoaded = false;
 
-  // Anti-double envoi (orfèvre)
+  // Anti-double envoi
   let lastSubmitSig = "";
   let lastSubmitAt = 0;
+
+  // ===== BIPS (WebAudio) =====
+  let __audioCtx = null;
+  function beep_(freq = 880, durMs = 70, vol = 0.18){
+    try{
+      __audioCtx = __audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (__audioCtx.state === "suspended") __audioCtx.resume();
+
+      const o = __audioCtx.createOscillator();
+      const g = __audioCtx.createGain();
+
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.value = vol;
+
+      o.connect(g);
+      g.connect(__audioCtx.destination);
+
+      o.start();
+      setTimeout(() => { try{ o.stop(); }catch(_){}
+      }, durMs);
+    }catch(_){}
+  }
+  function beepDetected_(){ beep_(1047, 60, 0.16); }
+  function beepSuccess_(){ beep_(880, 80, 0.18); }
+  function beepError_(){ beep_(220, 120, 0.12); }
 
   /******************** OPERATEURS (PIN + add/remove) ********************/
   const OP_KEY = "scanbar_operator";
   const OP_LIST_KEY = "scanbar_operator_list";
-
   const DEFAULT_OPERATORS = ["Anthony","Johan","Kéo","Michael"];
 
   function getOperators_(){
@@ -587,7 +590,6 @@
     setOperators_(ops);
     renderOperatorSelect_();
 
-    // si on vient de supprimer l’opérateur actif
     if ((localStorage.getItem(OP_KEY) || "") === selected){
       localStorage.removeItem(OP_KEY);
       operatorEl.value = "";
@@ -823,34 +825,35 @@
     setStatus("Mode nouveau scan", "muted");
   }
 
+  // Photos : UNE PAR UNE (beaucoup plus stable sur mobile)
   photoEl.addEventListener("change", async () => {
-  try {
-    const file = (photoEl.files && photoEl.files[0]) ? photoEl.files[0] : null;
+    try{
+      const file = (photoEl.files && photoEl.files[0]) ? photoEl.files[0] : null;
+      photoEl.value = "";
+      if (!file) return;
 
-    // IMPORTANT : reset input pour permettre de reprendre la même photo
-    photoEl.value = "";
+      if (images.length >= 3){
+        setStatus("Max 3 photos", "err");
+        beepError_();
+        return;
+      }
 
-    if (!file) return;
+      setLoading(true);
+      setStatus("Compression photo…", "muted");
 
-    if (images.length >= 3) {
-      setStatus("Max 3 photos", "err");
-      return;
+      const b64 = await fileToBase64Compressed_(file, 500, 0.75);
+      images.push({ index: images.length + 1, data_base64: b64.base64, mime: b64.mime });
+
+      renderPreviews();
+      setStatus("Photo ajoutée ✅", "ok");
+      beepSuccess_();
+    }catch(e){
+      setStatus("Erreur photo (ajoute les photos une par une)", "err");
+      beepError_();
+    }finally{
+      setLoading(false);
     }
-
-    setLoading(true);
-    setStatus("Compression photo…", "muted");
-
-    const b64 = await fileToBase64Compressed_(file, 500, 0.75);
-    images.push({ index: images.length + 1, data_base64: b64.base64, mime: b64.mime });
-
-    renderPreviews();
-    setStatus("Photo ajoutée ✅", "ok");
-  } catch (e) {
-    setStatus("Erreur photo (ajoute les photos une par une)", "err");
-  } finally {
-    setLoading(false);
-  }
-});
+  });
 
   function renderPreviews(){
     previewsEl.innerHTML = "";
@@ -905,10 +908,9 @@
     const ref = refEl.value.trim();
     const qty = Number(qtyEl.value || 0);
 
-    if (!ref) return setStatus("Référence obligatoire", "err");
-    if (!qty || qty < 1) return setStatus("Quantité obligatoire (>=1)", "err");
+    if (!ref) { setStatus("Référence obligatoire", "err"); beepError_(); return; }
+    if (!qty || qty < 1) { setStatus("Quantité obligatoire (>=1)", "err"); beepError_(); return; }
 
-    // Anti double envoi (orfèvre) : même ref+qty+code en < 2s
     const sig = `${operator}|${scanEl.value.trim()}|${ref}|${qty}|${images.length}|${editingScanId||""}|${expressOn?"E":"N"}`;
     const now = Date.now();
     if (!editingScanId && sig === lastSubmitSig && (now - lastSubmitAt) < 2000){
@@ -920,7 +922,6 @@
 
     const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
 
-    // Mode express : qty=1 par défaut + tag commentaire
     if (expressOn) {
       if (!qtyEl.value || Number(qtyEl.value) < 1) qtyEl.value = "1";
       commentEl.value = expressCommentWrap_(commentEl.value);
@@ -943,6 +944,7 @@
       if (!j.ok) throw new Error(j.error || "Erreur");
 
       setStatus(editingScanId ? "✅ Mise à jour OK" : "✅ Scan OK", "ok");
+      beepSuccess_();
 
       stopCamera();
       scanEl.value = "";
@@ -971,6 +973,7 @@
 
     }catch(e){
       setStatus(String(e.message || e), "err");
+      beepError_();
     }finally{
       setLoading(false);
     }
@@ -1032,7 +1035,7 @@
   }
 
   function selectRecent(item){
-    editingScanId = item.scan_id;
+    editingScanId = item.scan_id || item.scanId || item.id || null;
 
     scanEl.value = item.code_value || "";
     refEl.value = item.product_reference || "";
@@ -1084,6 +1087,7 @@
       camHint.textContent = "Caméra refusée / indisponible. Utilise la douchette.";
       stopCamera();
       setStatus(String(e.message || e), "err");
+      beepError_();
     }
   }
 
@@ -1138,6 +1142,7 @@
     stopCamera();
     scanEl.value = val;
     lastScanMethod = "phone";
+    beepDetected_();
     setStatus("Code détecté ✅", "ok");
     setTimeout(()=>refEl.focus(), 80);
   }
@@ -1158,7 +1163,7 @@
       .replaceAll("&","&amp;")
       .replaceAll("<","&lt;")
       .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
+      .replaceAll('"',"quot;")
       .replaceAll("'","&#039;");
   }
 
