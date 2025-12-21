@@ -31,7 +31,6 @@
       color:var(--text);
     }
 
-    /* petite barre brandée en haut */
     .topbar{
       height:6px;
       background: var(--blue);
@@ -89,7 +88,7 @@
     }
     label{
       display:block;
-      font-weight:800;
+      font-weight:900;
       margin: 10px 0 6px;
     }
     .hint{
@@ -146,7 +145,7 @@
     .btnGhost:hover{ background:#eceff3; }
 
     /* STATUS + LOADER */
-    .status{ margin-top: 10px; font-weight:800; font-size: 14px; }
+    .status{ margin-top: 10px; font-weight:900; font-size: 14px; }
     .ok{color:#0f766e}
     .err{color:#b91c1c}
     .muted{color:var(--muted)}
@@ -272,6 +271,25 @@
     }
     #expressBanner b{ color: var(--red); }
 
+    /* Tiny help row */
+    .microRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .pill{
+      display:inline-block;
+      border:1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      background:#fff;
+      user-select:none;
+    }
+
     @media (max-width:520px){
       .brandCenter img{ max-height: 42px; } /* logo plus petit sur mobile */
       .btn{ width:100%; }
@@ -293,25 +311,28 @@
       <div class="appBadge">Scanbar.appV2</div>
 
       <div class="brandCenter">
-        <!-- ✅ Mets simplement ton fichier logo dans le repo au même niveau que index.html -->
-        <img src="logo.png?v=2" alt="promosdiscount">
+        <!-- IMPORTANT : logo.png doit être dans le repo, au même niveau que index.html -->
+        <img src="logo.png?v=3" alt="promosdiscount">
       </div>
 
-      <!-- fantôme pour garder le logo parfaitement centré -->
       <div class="appBadge appBadgeGhost">Scanbar.appV2</div>
     </div>
 
     <!-- OPERATEUR -->
     <div class="card">
       <label>Opérateur *</label>
-      <select id="operator">
-        <option value="">— Sélectionner —</option>
-        <option>Anthony</option>
-        <option>Johan</option>
-        <option>Kéo</option>
-        <option>Michael</option>
-      </select>
-      <div class="hint">Choisi une seule fois par session</div>
+
+      <div class="row">
+        <select id="operator"></select>
+
+        <!-- Gestion opérateurs (protégée PIN) -->
+        <button class="btn" type="button" onclick="addOperator()">➕ Ajouter</button>
+        <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Retirer</button>
+      </div>
+
+      <div class="hint">
+        Ajouter/retirer est protégé par PIN (2121). Les opérateurs sont enregistrés sur l’appareil (navigateur).
+      </div>
     </div>
 
     <!-- HISTORY -->
@@ -327,10 +348,17 @@
           <input id="filterRef" placeholder="Filtrer par référence" oninput="applyFilters()">
           <input id="filterCode" placeholder="Filtrer par code" oninput="applyFilters()">
         </div>
+
         <div class="row">
           <button class="btn" type="button" onclick="loadRecent()">🔄 Actualiser</button>
           <button class="btn" type="button" onclick="exportCSV()">⬇ Export CSV</button>
         </div>
+
+        <div class="microRow">
+          <span class="pill">Astuce : utilise “Ouvrir” pour compléter plus tard (photos / infos)</span>
+          <span class="pill">Le bouton “Mettre à jour” remplace “Valider” en mode édition</span>
+        </div>
+
         <div id="recentList" class="muted">Clique “Scans récents” pour charger…</div>
       </div>
     </div>
@@ -342,10 +370,7 @@
 
       <div class="row" style="margin-top:10px;">
         <button class="btn" type="button" onclick="toggleCamera()">📷 Scanner caméra</button>
-
-        <!-- MODE EXPRESS -->
         <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express (PIN)</button>
-
         <button class="btn" type="button" onclick="noEan()">Produit sans EAN</button>
         <button class="btnGhost" type="button" onclick="resetForm()">Effacer</button>
       </div>
@@ -381,17 +406,27 @@
       <label>Quantité *</label>
       <input id="quantity" type="number" min="1">
 
-      <label>Poids (optionnel)</label>
-      <input id="weight">
+      <div class="row">
+        <div>
+          <label>Poids (optionnel)</label>
+          <input id="weight">
+        </div>
+        <div>
+          <label>Emplacement (optionnel)</label>
+          <input id="location">
+        </div>
+      </div>
 
-      <label>Emplacement (optionnel)</label>
-      <input id="location">
-
-      <label>Dimensions (optionnel)</label>
-      <input id="dimension">
-
-      <label>Couleur (optionnel)</label>
-      <input id="color">
+      <div class="row">
+        <div>
+          <label>Dimensions (optionnel)</label>
+          <input id="dimension">
+        </div>
+        <div>
+          <label>Couleur (optionnel)</label>
+          <input id="color">
+        </div>
+      </div>
 
       <label>Commentaire (optionnel)</label>
       <textarea id="comment"></textarea>
@@ -420,6 +455,10 @@
   const API_TOKEN = "PRO_DISCOUNT02";
   /************************************************************************/
 
+  /******************** PIN UNIQUE (OPS + EXPRESS) ********************/
+  const PIN_2121 = "2121";
+  /*********************************************************************/
+
   const operatorEl = document.getElementById("operator");
   const scanEl = document.getElementById("scanInput");
   const refEl = document.getElementById("reference");
@@ -439,18 +478,16 @@
   const camVideo = document.getElementById("camVideo");
   const camHint = document.getElementById("camHint");
 
-  // Express UI
   const expressBannerEl = document.getElementById("expressBanner");
   const expressRefLabelEl = document.getElementById("expressRefLabel");
 
-  let images = [];              // {data_base64, mime, index}
+  let images = [];
   let noEanFlag = false;
   let editingScanId = null;
 
   let recentItemsCache = [];
   let historyOpen = false;
 
-  // scan_method guidance
   let lastScanMethod = "scanner"; // scanner | phone | manual
 
   // Camera
@@ -460,11 +497,117 @@
   let zxingReader = null;
   let zxingLoaded = false;
 
-  // Persist operator per session
+  // Anti-double envoi (orfèvre)
+  let lastSubmitSig = "";
+  let lastSubmitAt = 0;
+
+  /******************** OPERATEURS (PIN + add/remove) ********************/
   const OP_KEY = "scanbar_operator";
+  const OP_LIST_KEY = "scanbar_operator_list";
+
+  const DEFAULT_OPERATORS = ["Anthony","Johan","Kéo","Michael"];
+
+  function getOperators_(){
+    try{
+      const raw = localStorage.getItem(OP_LIST_KEY);
+      if (!raw) return [...DEFAULT_OPERATORS];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || !arr.length) return [...DEFAULT_OPERATORS];
+      return arr.map(x => String(x || "").trim()).filter(Boolean);
+    }catch(_){
+      return [...DEFAULT_OPERATORS];
+    }
+  }
+
+  function setOperators_(arr){
+    const clean = arr.map(x => String(x||"").trim()).filter(Boolean);
+    localStorage.setItem(OP_LIST_KEY, JSON.stringify(clean));
+  }
+
+  function renderOperatorSelect_(){
+    const current = localStorage.getItem(OP_KEY) || "";
+    const ops = getOperators_();
+
+    operatorEl.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "— Sélectionner —";
+    operatorEl.appendChild(opt0);
+
+    ops.forEach(name => {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name;
+      operatorEl.appendChild(o);
+    });
+
+    if (current && ops.includes(current)) operatorEl.value = current;
+  }
+
+  function pinOk_(){
+    const pin = prompt("🔒 Code PIN :");
+    if (pin === null) return false;
+    if (String(pin).trim() !== PIN_2121){
+      setStatus("PIN incorrect", "err");
+      return false;
+    }
+    return true;
+  }
+
+  function addOperator(){
+    if (!pinOk_()) return;
+    const name = prompt("Nom du nouvel opérateur (ex: Lucas) :");
+    if (name === null) return;
+    const n = String(name).trim();
+    if (!n) return;
+
+    const ops = getOperators_();
+    const exists = ops.some(x => x.toLowerCase() === n.toLowerCase());
+    if (exists){
+      setStatus("Cet opérateur existe déjà", "err");
+      return;
+    }
+    ops.push(n);
+    setOperators_(ops);
+    renderOperatorSelect_();
+    operatorEl.value = n;
+    localStorage.setItem(OP_KEY, n);
+    setStatus("Opérateur ajouté ✅", "ok");
+  }
+
+  function removeOperator(){
+    if (!pinOk_()) return;
+    const selected = operatorEl.value.trim();
+    if (!selected){
+      setStatus("Sélectionne l’opérateur à retirer", "err");
+      return;
+    }
+    if (!confirm(`Retirer l’opérateur “${selected}” ?`)) return;
+
+    const ops = getOperators_().filter(x => x.toLowerCase() !== selected.toLowerCase());
+    if (!ops.length){
+      setStatus("Impossible : il faut garder au moins 1 opérateur", "err");
+      return;
+    }
+    setOperators_(ops);
+    renderOperatorSelect_();
+
+    // si on vient de supprimer l’opérateur actif
+    if ((localStorage.getItem(OP_KEY) || "") === selected){
+      localStorage.removeItem(OP_KEY);
+      operatorEl.value = "";
+    }
+    setStatus("Opérateur retiré ✅", "ok");
+  }
+
+  operatorEl.addEventListener("change", () => {
+    const v = operatorEl.value.trim();
+    if (v) localStorage.setItem(OP_KEY, v);
+  });
+  /*********************************************************************/
 
   /******************** MODE EXPRESS (PIN + RESET JOURNALIER) ********************/
-  const EXPRESS_PIN = "2121";
+  const EXPRESS_PIN = PIN_2121;
   const EXPRESS_PREFIX = "ref-";
   const EXPRESS_PAD = 4;
   const EXPRESS_TIMEOUT_MIN = 30;
@@ -488,7 +631,6 @@
     const tk = todayKey_();
     const savedDate = localStorage.getItem(EXP_DATE_KEY) || "";
     if (savedDate !== tk){
-      // reset journalier
       localStorage.setItem(EXP_DATE_KEY, tk);
       localStorage.setItem(EXP_SEQ_KEY, "1");
       return 1;
@@ -504,7 +646,6 @@
 
   function toggleExpress(){
     if (expressOn) return disableExpress();
-
     const pin = prompt("🔒 Entrer le code PIN pour activer le mode Express :");
     if (pin === null) return;
     if (String(pin).trim() !== EXPRESS_PIN){
@@ -521,9 +662,8 @@
     expressSeq = loadExpressSeq_();
     expressBannerEl.style.display = "block";
 
-    // préparer valeur par défaut
     setExpressRef_(expressSeq);
-    if (!qtyEl.value || Number(qtyEl.value) < 1) qtyEl.value = "1";
+    qtyEl.value = "1";
 
     setStatus("Mode Express activé ✅", "ok");
     startExpressWatchdog_();
@@ -553,7 +693,6 @@
   function touchExpress_(){
     if (!expressOn) return;
     expressLastActivity = Date.now();
-    // reset journalier si date change pendant la session
     const newSeq = loadExpressSeq_();
     if (newSeq !== expressSeq){
       expressSeq = newSeq;
@@ -584,14 +723,8 @@
   }
   /************************************************************************/
 
-  operatorEl.addEventListener("change", () => {
-    const v = operatorEl.value.trim();
-    if (v) localStorage.setItem(OP_KEY, v);
-  });
-
   window.addEventListener("load", () => {
-    const saved = localStorage.getItem(OP_KEY) || "";
-    if (saved) operatorEl.value = saved;
+    renderOperatorSelect_();
     setTimeout(() => scanEl.focus(), 150);
   });
 
@@ -610,7 +743,6 @@
     if (e.key === "Enter") { e.preventDefault(); btnSubmit.focus(); }
   });
 
-  // If user types/pastes manually in scan field => scanner
   scanEl.addEventListener("input", () => { if (!noEanFlag) lastScanMethod = "scanner"; });
 
   function setStatus(msg, cls="muted"){
@@ -660,7 +792,6 @@
     URL.revokeObjectURL(url);
   }
 
-  // No EAN
   function noEan(){
     noEanFlag = true;
     lastScanMethod = "manual";
@@ -669,7 +800,6 @@
     refEl.focus();
   }
 
-  // Reset / clear edit
   function resetForm(){
     stopCamera();
     scanEl.value = "";
@@ -698,7 +828,6 @@
     setStatus("Mode nouveau scan", "muted");
   }
 
-  // Photos
   photoEl.addEventListener("change", async () => {
     const files = Array.from(photoEl.files || []).slice(0, 3);
     images = [];
@@ -728,7 +857,6 @@
     });
   }
 
-  // Payload
   function payloadBase(action){
     const scan_method = (images.length ? "phone" : lastScanMethod);
     return {
@@ -758,7 +886,6 @@
     const operator = operatorEl.value.trim();
     if (!operator) return setStatus("Sélectionne l'opérateur", "err");
 
-    // Express touches (reset journalier + activity)
     if (expressOn) touchExpress_();
 
     const ref = refEl.value.trim();
@@ -766,6 +893,16 @@
 
     if (!ref) return setStatus("Référence obligatoire", "err");
     if (!qty || qty < 1) return setStatus("Quantité obligatoire (>=1)", "err");
+
+    // Anti double envoi (orfèvre) : même ref+qty+code en < 2s
+    const sig = `${operator}|${scanEl.value.trim()}|${ref}|${qty}|${images.length}|${editingScanId||""}|${expressOn?"E":"N"}`;
+    const now = Date.now();
+    if (!editingScanId && sig === lastSubmitSig && (now - lastSubmitAt) < 2000){
+      setStatus("Déjà envoyé (anti double-clic)", "muted");
+      return;
+    }
+    lastSubmitSig = sig;
+    lastSubmitAt = now;
 
     const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
 
@@ -793,7 +930,6 @@
 
       setStatus(editingScanId ? "✅ Mise à jour OK" : "✅ Scan OK", "ok");
 
-      // Clear form (keep operator + express state)
       stopCamera();
       scanEl.value = "";
       weightEl.value = "";
@@ -809,7 +945,6 @@
       photoEl.value = "";
       renderPreviews();
 
-      // Express : avance ref-000X + qty=1
       if (expressOn) {
         advanceExpress_();
       } else {
@@ -827,7 +962,6 @@
     }
   }
 
-  // Recent list
   function loadRecent(){
     const operator = operatorEl.value.trim();
     if (!operator) return setStatus("Sélectionne l'opérateur d'abord", "err");
@@ -839,7 +973,7 @@
       token: API_TOKEN,
       action: "LIST_RECENT",
       client: { operator, device: navigator.userAgent },
-      limit: 120
+      limit: 160
     };
 
     fetch(API_URL, {
@@ -864,17 +998,20 @@
       return;
     }
 
-    div.innerHTML = items.slice(0, 60).map(it => {
+    div.innerHTML = items.slice(0, 80).map(it => {
       const ts = it.scan_timestamp ? String(it.scan_timestamp) : "";
       const code = it.code_value ? String(it.code_value) : "";
       const ref = it.product_reference ? String(it.product_reference) : "";
       const qty = it.quantity ? String(it.quantity) : "";
       const hasImg = (it.image_1_url_raw || it.image_2_url_raw || it.image_3_url_raw) ? "📷" : "";
+      const m = it.scan_method ? String(it.scan_method) : "";
       return `
         <div class="item">
           <div><b>${escapeHtml_(ref)}</b> · Qté ${escapeHtml_(qty)} ${hasImg}</div>
-          <div class="small">${escapeHtml_(ts)} · ${escapeHtml_(code)}</div>
-          <button class="btn" type="button" style="margin-top:8px;" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir</button>
+          <div class="small">${escapeHtml_(ts)} · ${escapeHtml_(code)} · ${escapeHtml_(m)}</div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" type="button" onclick='selectRecent(${JSON.stringify(it)})'>Ouvrir</button>
+          </div>
         </div>
       `;
     }).join("");
@@ -913,7 +1050,6 @@
       camVideo.srcObject = camStream;
       await camVideo.play();
 
-      // Prefer BarcodeDetector
       if ("BarcodeDetector" in window) {
         try{
           barcodeDetector = new BarcodeDetector({ formats: ["ean_13","ean_8","qr_code","code_128"] });
@@ -925,7 +1061,6 @@
         }
       }
 
-      // Fallback ZXing
       camHint.textContent = "BarcodeDetector indisponible — chargement ZXing…";
       await loadZXing_();
       camHint.textContent = zxingLoaded ? "ZXing chargé — détection en cours…" : "ZXing non chargé (réseau/CDN). Utilise la douchette.";
@@ -1004,7 +1139,6 @@
     });
   }
 
-  // Utils
   function escapeHtml_(s){
     return String(s || "")
       .replaceAll("&","&amp;")
