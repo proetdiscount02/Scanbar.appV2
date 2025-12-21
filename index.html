@@ -6,46 +6,6 @@
   <title>Scanbar.appV2</title>
 
   <style>
-    .headerBar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding: 10px 0 16px;
-}
-
-.appBadge{
-  background: var(--blue);
-  color:#fff;
-  font-weight: 900;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1;
-  white-space: nowrap;
-  box-shadow: 0 2px 0 rgba(0,0,0,.08);
-}
-
-.appBadgeGhost{
-  visibility:hidden;
-}
-
-.brandCenter{
-  flex:1;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-
-.brandCenter img{
-  max-height: 62px;
-  width:auto;
-  display:block;
-}
-    .topbar{
-  height:6px;
-  background: var(--blue);
-  border-bottom: 1px solid var(--border);
-}
     :root{
       --bg:#ffffff;
       --card:#ffffff;
@@ -71,20 +31,48 @@
       color:var(--text);
     }
 
+    /* petite barre brandée en haut */
+    .topbar{
+      height:6px;
+      background: var(--blue);
+      border-bottom: 1px solid var(--border);
+    }
+
     .wrap{
       max-width: 980px;
-      margin: 16px auto 40px;
+      margin: 10px auto 40px;
       padding: 0 14px;
     }
 
-    /* HEADER */
-    .brand{
+    /* HEADER : badge à gauche + logo centré */
+    .headerBar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 0 16px;
+      gap: 10px;
+    }
+    .appBadge{
+      background: var(--blue);
+      color:#fff;
+      font-weight: 900;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: 0 2px 0 rgba(0,0,0,.08);
+      user-select:none;
+    }
+    .appBadgeGhost{ visibility:hidden; }
+
+    .brandCenter{
+      flex:1;
       display:flex;
       justify-content:center;
       align-items:center;
-      padding: 10px 0 16px;
     }
-    .brand img{
+    .brandCenter img{
       max-height: 62px;
       width:auto;
       display:block;
@@ -101,7 +89,7 @@
     }
     label{
       display:block;
-      font-weight:700;
+      font-weight:800;
       margin: 10px 0 6px;
     }
     .hint{
@@ -127,7 +115,7 @@
       flex-wrap:wrap;
       align-items:center;
     }
-    .row > *{flex:1 1 260px;}
+    .row > *{flex:1 1 240px;}
 
     /* BUTTONS */
     .btn{
@@ -135,7 +123,7 @@
       border:none;
       border-radius: 12px;
       padding: 12px 14px;
-      font-weight:800;
+      font-weight:900;
       cursor:pointer;
       background: var(--blue);
       color:#fff;
@@ -146,7 +134,7 @@
     .btn:hover{ background: var(--blueHover); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .btnDanger{ background: var(--red); }
+    .btnDanger{ background: var(--red); color:#fff; }
     .btnDanger:hover{ background: var(--redHover); }
 
     .btnGhost{
@@ -158,7 +146,7 @@
     .btnGhost:hover{ background:#eceff3; }
 
     /* STATUS + LOADER */
-    .status{ margin-top: 10px; font-weight:700; font-size: 14px; }
+    .status{ margin-top: 10px; font-weight:800; font-size: 14px; }
     .ok{color:#0f766e}
     .err{color:#b91c1c}
     .muted{color:var(--muted)}
@@ -273,32 +261,45 @@
     }
     .camHint{font-size:12px;color:var(--muted); margin-top:8px;}
 
+    /* EXPRESS banner */
+    #expressBanner{
+      display:none;
+      margin-top:10px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+    }
+    #expressBanner b{ color: var(--red); }
+
     @media (max-width:520px){
-      .brand img{ max-height:52px; }
+      .brandCenter img{ max-height: 42px; } /* logo plus petit sur mobile */
       .btn{ width:100%; }
       .row > *{ flex:1 1 100%; }
       .drawerHead{flex-wrap:wrap;}
       .arrow{width:100%; height:42px;}
+      .appBadge, .appBadgeGhost{ font-size: 13px; padding: 8px 10px; }
     }
   </style>
 </head>
 
 <body>
-  
-   <div class="topbar"></div>
-  
+  <div class="topbar"></div>
+
   <div class="wrap">
 
-    <!-- LOGO -->
+    <!-- HEADER -->
     <div class="headerBar">
-  <div class="appBadge">Scanbar.appV2</div>
+      <div class="appBadge">Scanbar.appV2</div>
 
-  <div class="brandCenter">
-    <img src="logo.png?v=2" alt="promosdiscount">
-  </div>
+      <div class="brandCenter">
+        <!-- ✅ Mets simplement ton fichier logo dans le repo au même niveau que index.html -->
+        <img src="logo.png?v=2" alt="promosdiscount">
+      </div>
 
-  <div class="appBadge appBadgeGhost">Scanbar.appV2</div>
-</div>
+      <!-- fantôme pour garder le logo parfaitement centré -->
+      <div class="appBadge appBadgeGhost">Scanbar.appV2</div>
+    </div>
 
     <!-- OPERATEUR -->
     <div class="card">
@@ -341,8 +342,21 @@
 
       <div class="row" style="margin-top:10px;">
         <button class="btn" type="button" onclick="toggleCamera()">📷 Scanner caméra</button>
+
+        <!-- MODE EXPRESS -->
+        <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express (PIN)</button>
+
         <button class="btn" type="button" onclick="noEan()">Produit sans EAN</button>
         <button class="btnGhost" type="button" onclick="resetForm()">Effacer</button>
+      </div>
+
+      <!-- Bannière Express -->
+      <div id="expressBanner">
+        <b>⚡ MODE EXPRESS ACTIF</b>
+        <div class="hint" style="margin-top:6px;">
+          Référence auto <b id="expressRefLabel"></b> · Quantité = 1 ·
+          <button class="btnGhost" type="button" style="padding:6px 10px;margin-left:6px;" onclick="disableExpress()">Quitter</button>
+        </div>
       </div>
 
       <!-- CAMERA -->
@@ -351,10 +365,12 @@
         <div class="row" style="margin-top:10px;">
           <button class="btnGhost" type="button" onclick="stopCamera()">⏹ Stop caméra</button>
         </div>
-        <div class="camHint" id="camHint">Autorise la caméra. Si ton navigateur ne supporte pas BarcodeDetector, ZXing sera chargé automatiquement.</div>
+        <div class="camHint" id="camHint">
+          Autorise la caméra. Si BarcodeDetector n’est pas dispo, ZXing se charge automatiquement.
+        </div>
       </div>
 
-      <div class="hint">Mode rafale : focus auto sur le scan après validation.</div>
+      <div class="hint">Workflow : Scan → (Entrée) Référence → (Entrée) Quantité → (Entrée) Valider</div>
     </div>
 
     <!-- PRODUIT -->
@@ -391,7 +407,7 @@
 
     <!-- SUBMIT -->
     <div class="card">
-      <button id="btnSubmit" class="btn btnDanger" type="button" onclick="submitScan()">✅ Valider le scan</button>
+      <button id="btnSubmit" class="btnDanger" type="button" onclick="submitScan()">✅ Valider le scan</button>
       <div class="loadingBar" id="loadingBar"><div></div></div>
       <div class="status muted" id="status">Prêt.</div>
     </div>
@@ -400,7 +416,7 @@
 
 <script>
   /******************** CONFIG (CHANGE ONLY THESE 2) ********************/
-  const API_URL = "https://script.google.com/macros/s/AKfycbyh1-hHVbFG-at9GDAU40q8dqxYkSYLqbO1bLntrIRZVWz7uDwYZcccktSnICFjZBvN/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbwA7pFaZIr6uN6Gu2i77W5bEnN5An8KhMV4RlpgHrBRKfXy-30BBsJK6zsP78Xxgj4/exec";
   const API_TOKEN = "PRO_DISCOUNT02";
   /************************************************************************/
 
@@ -423,6 +439,10 @@
   const camVideo = document.getElementById("camVideo");
   const camHint = document.getElementById("camHint");
 
+  // Express UI
+  const expressBannerEl = document.getElementById("expressBanner");
+  const expressRefLabelEl = document.getElementById("expressRefLabel");
+
   let images = [];              // {data_base64, mime, index}
   let noEanFlag = false;
   let editingScanId = null;
@@ -440,8 +460,130 @@
   let zxingReader = null;
   let zxingLoaded = false;
 
-  // Persist operator per session (localStorage)
+  // Persist operator per session
   const OP_KEY = "scanbar_operator";
+
+  /******************** MODE EXPRESS (PIN + RESET JOURNALIER) ********************/
+  const EXPRESS_PIN = "2121";
+  const EXPRESS_PREFIX = "ref-";
+  const EXPRESS_PAD = 4;
+  const EXPRESS_TIMEOUT_MIN = 30;
+
+  const EXP_DATE_KEY = "SCANBAR_EXPRESS_DATE";
+  const EXP_SEQ_KEY  = "SCANBAR_EXPRESS_SEQ";
+
+  let expressOn = false;
+  let expressSeq = 1;
+  let expressLastActivity = 0;
+
+  function todayKey_(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${dd}`;
+  }
+
+  function loadExpressSeq_(){
+    const tk = todayKey_();
+    const savedDate = localStorage.getItem(EXP_DATE_KEY) || "";
+    if (savedDate !== tk){
+      // reset journalier
+      localStorage.setItem(EXP_DATE_KEY, tk);
+      localStorage.setItem(EXP_SEQ_KEY, "1");
+      return 1;
+    }
+    const n = Number(localStorage.getItem(EXP_SEQ_KEY) || "1");
+    return (Number.isFinite(n) && n >= 1) ? n : 1;
+  }
+
+  function saveExpressSeq_(n){
+    localStorage.setItem(EXP_DATE_KEY, todayKey_());
+    localStorage.setItem(EXP_SEQ_KEY, String(n));
+  }
+
+  function toggleExpress(){
+    if (expressOn) return disableExpress();
+
+    const pin = prompt("🔒 Entrer le code PIN pour activer le mode Express :");
+    if (pin === null) return;
+    if (String(pin).trim() !== EXPRESS_PIN){
+      setStatus("PIN incorrect", "err");
+      return;
+    }
+    enableExpress();
+  }
+
+  function enableExpress(){
+    expressOn = true;
+    expressLastActivity = Date.now();
+
+    expressSeq = loadExpressSeq_();
+    expressBannerEl.style.display = "block";
+
+    // préparer valeur par défaut
+    setExpressRef_(expressSeq);
+    if (!qtyEl.value || Number(qtyEl.value) < 1) qtyEl.value = "1";
+
+    setStatus("Mode Express activé ✅", "ok");
+    startExpressWatchdog_();
+    setTimeout(()=>scanEl.focus(), 50);
+  }
+
+  function disableExpress(){
+    expressOn = false;
+    expressBannerEl.style.display = "none";
+    setStatus("Mode Express désactivé", "muted");
+  }
+
+  function startExpressWatchdog_(){
+    if (window.__expTimer) clearInterval(window.__expTimer);
+    window.__expTimer = setInterval(() => {
+      if (!expressOn) return;
+      const mins = (Date.now() - expressLastActivity) / 60000;
+      if (mins >= EXPRESS_TIMEOUT_MIN){
+        disableExpress();
+        setStatus("Mode Express verrouillé (inactivité)", "muted");
+        clearInterval(window.__expTimer);
+        window.__expTimer = null;
+      }
+    }, 5000);
+  }
+
+  function touchExpress_(){
+    if (!expressOn) return;
+    expressLastActivity = Date.now();
+    // reset journalier si date change pendant la session
+    const newSeq = loadExpressSeq_();
+    if (newSeq !== expressSeq){
+      expressSeq = newSeq;
+      setExpressRef_(expressSeq);
+    }
+  }
+
+  function setExpressRef_(n){
+    const r = EXPRESS_PREFIX + String(n).padStart(EXPRESS_PAD, "0");
+    refEl.value = r;
+    expressRefLabelEl.textContent = r;
+  }
+
+  function advanceExpress_(){
+    expressSeq += 1;
+    saveExpressSeq_(expressSeq);
+    setExpressRef_(expressSeq);
+    qtyEl.value = "1";
+  }
+
+  function expressCommentWrap_(existing){
+    const ref = (refEl.value || "").trim();
+    const base = String(existing || "").trim();
+    const tag = `[EXPRESS ${ref}]`;
+    if (!base) return tag;
+    if (base.startsWith("[EXPRESS")) return base;
+    return `${tag} ${base}`;
+  }
+  /************************************************************************/
+
   operatorEl.addEventListener("change", () => {
     const v = operatorEl.value.trim();
     if (v) localStorage.setItem(OP_KEY, v);
@@ -455,7 +597,11 @@
 
   // Enter key workflow
   scanEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); lastScanMethod = "scanner"; refEl.focus(); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      lastScanMethod = "scanner";
+      refEl.focus();
+    }
   });
   refEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); qtyEl.focus(); }
@@ -612,12 +758,24 @@
     const operator = operatorEl.value.trim();
     if (!operator) return setStatus("Sélectionne l'opérateur", "err");
 
+    // Express touches (reset journalier + activity)
+    if (expressOn) touchExpress_();
+
     const ref = refEl.value.trim();
     const qty = Number(qtyEl.value || 0);
+
     if (!ref) return setStatus("Référence obligatoire", "err");
     if (!qty || qty < 1) return setStatus("Quantité obligatoire (>=1)", "err");
 
     const action = editingScanId ? "UPDATE_SCAN" : "CREATE_SCAN";
+
+    // Mode express : qty=1 par défaut + tag commentaire
+    if (expressOn) {
+      if (!qtyEl.value || Number(qtyEl.value) < 1) qtyEl.value = "1";
+      commentEl.value = expressCommentWrap_(commentEl.value);
+      lastScanMethod = "scanner";
+    }
+
     const payload = payloadBase(action);
     if (editingScanId) payload.scan_id = editingScanId;
 
@@ -635,11 +793,9 @@
 
       setStatus(editingScanId ? "✅ Mise à jour OK" : "✅ Scan OK", "ok");
 
-      // Keep operator; clear rest
+      // Clear form (keep operator + express state)
       stopCamera();
       scanEl.value = "";
-      refEl.value = "";
-      qtyEl.value = "";
       weightEl.value = "";
       locationEl.value = "";
       dimEl.value = "";
@@ -652,6 +808,14 @@
       btnSubmit.textContent = "✅ Valider le scan";
       photoEl.value = "";
       renderPreviews();
+
+      // Express : avance ref-000X + qty=1
+      if (expressOn) {
+        advanceExpress_();
+      } else {
+        refEl.value = "";
+        qtyEl.value = "";
+      }
 
       setTimeout(()=>scanEl.focus(), 120);
       if (historyOpen) loadRecent();
@@ -738,7 +902,7 @@
     setTimeout(()=>scanEl.focus(), 50);
   }
 
-  // Camera scan (EAN / QR)
+  // Camera scan
   async function toggleCamera(){
     if (camStream) return stopCamera();
     camPanel.style.display = "block";
@@ -753,7 +917,7 @@
       if ("BarcodeDetector" in window) {
         try{
           barcodeDetector = new BarcodeDetector({ formats: ["ean_13","ean_8","qr_code","code_128"] });
-          camHint.textContent = "Caméra OK — détection en cours (BarcodeDetector)…";
+          camHint.textContent = "Caméra OK — détection en cours…";
           startDetectLoop_BarcodeDetector_();
           return;
         } catch(e){
@@ -796,9 +960,7 @@
         const codes = await barcodeDetector.detect(camVideo);
         if (codes && codes.length){
           const val = String(codes[0].rawValue || "").trim();
-          if (val){
-            onDetectedCode_(val);
-          }
+          if (val) onDetectedCode_(val);
         }
       }catch(_){}
     }, 250);
