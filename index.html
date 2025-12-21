@@ -430,7 +430,7 @@
     <!-- PHOTOS -->
     <div class="card">
       <label>Photos (max 3)</label>
-      <input id="photoInput" type="file" accept="image/*" capture="environment" multiple>
+      <input id="photoInput" type="file" accept="image/*" capture="environment">
       <div class="hint">Jusqu’à 3 photos. Compression auto (500×500 max).</div>
       <div class="previews" id="previews"></div>
     </div>
@@ -824,14 +824,33 @@
   }
 
   photoEl.addEventListener("change", async () => {
-    const files = Array.from(photoEl.files || []).slice(0, 3);
-    images = [];
-    for (let i=0; i<files.length; i++){
-      const b64 = await fileToBase64Compressed_(files[i], 500, 0.75);
-      images.push({ index: i+1, data_base64: b64.base64, mime: b64.mime });
+  try {
+    const file = (photoEl.files && photoEl.files[0]) ? photoEl.files[0] : null;
+
+    // IMPORTANT : reset input pour permettre de reprendre la même photo
+    photoEl.value = "";
+
+    if (!file) return;
+
+    if (images.length >= 3) {
+      setStatus("Max 3 photos", "err");
+      return;
     }
+
+    setLoading(true);
+    setStatus("Compression photo…", "muted");
+
+    const b64 = await fileToBase64Compressed_(file, 500, 0.75);
+    images.push({ index: images.length + 1, data_base64: b64.base64, mime: b64.mime });
+
     renderPreviews();
-  });
+    setStatus("Photo ajoutée ✅", "ok");
+  } catch (e) {
+    setStatus("Erreur photo (ajoute les photos une par une)", "err");
+  } finally {
+    setLoading(false);
+  }
+});
 
   function renderPreviews(){
     previewsEl.innerHTML = "";
