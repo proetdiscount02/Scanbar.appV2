@@ -157,6 +157,7 @@
       color:#111827;
       border:1px solid var(--border);
       box-shadow:none;
+      border-radius: 12px;
     }
     .btnGhost:hover{ background:#eceff3; }
 
@@ -366,19 +367,21 @@
       <button class="drawerClose" type="button" onclick="closeMenu()">×</button>
     </div>
 
-    <button class="btn" type="button" onclick="openRecentPanel()">📘 Scans récents</button>
+    <button class="btn" type="button" onclick="openRecentPanel()">📜 Scans récents</button>
 
-    <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express 🔒</button>
-    <button class="btn" type="button" onclick="addOperator()">➕ Ajouter opérateur 🔒</button>
-    <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Supprimer opérateur 🔒</button>
+    <button class="btnDanger" type="button" onclick="toggleExpress()">⚡ Mode Express (PIN)</button>
+    <button class="btn" type="button" onclick="addOperator()">➕ Ajouter opérateur (PIN)</button>
+    <button class="btnGhost" type="button" onclick="removeOperator()">🗑 Supprimer opérateur (PIN)</button>
 
+    <div class="hint">
+      Conseil : laisse l’écran principal le plus simple possible (scan → ref → qty → valider).
     </div>
   </div>
 
   <!-- Panel Scans récents -->
   <div id="recentPanel" class="panel">
     <div class="panelHeader">
-      <div class="title">📘 Scans récents</div>
+      <div class="title">📜 Scans récents</div>
       <button class="btnGhost" type="button" onclick="closeRecentPanel()">✖ Fermer</button>
     </div>
 
@@ -405,7 +408,8 @@
       <div class="appBadge">Scanbar.appV2</div>
 
       <div class="brandCenter">
-        <img src="logo.png?v=5" alt="promosdiscount">
+        <!-- logo.png doit être dans le repo, au même niveau que index.html -->
+        <img src="logo.png?v=6" alt="promosdiscount">
       </div>
 
       <button class="menuBtn" type="button" onclick="openMenu()" aria-label="Menu">☰</button>
@@ -433,7 +437,7 @@
         <b>⚡ MODE EXPRESS ACTIF</b>
         <div class="hint" style="margin-top:6px;">
           Référence auto <b id="expressRefLabel"></b> · Quantité = 1 ·
-          <button class="btnGhost" type="button" style="padding:6px 10px;margin-left:6px;" onclick="disableExpress()">Quitter</button>
+          <button class="btnGhost" type="button" style="padding:6px 10px;margin-left:6px;border-radius:12px;" onclick="disableExpress()">Quitter</button>
         </div>
       </div>
 
@@ -444,7 +448,7 @@
           <button class="btnGhost" type="button" onclick="stopCamera()">⏹ Stop caméra</button>
         </div>
         <div class="camHint" id="camHint">
-          Autorise la caméra. Si BarcodeDetector n’est pas dispo, ZXing se charge automatiquement.
+          Autorise la caméra. Sur iPhone, le mode scan optimisé est utilisé automatiquement.
         </div>
       </div>
 
@@ -512,6 +516,9 @@
   const PIN_2121 = "2121";
   /*********************************************************************/
 
+  // iOS detection (tous navigateurs iPhone = WebKit)
+  const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
   // Menu / panels
   const menuOverlay = document.getElementById("menuOverlay");
   const menuDrawer  = document.getElementById("menuDrawer");
@@ -531,7 +538,6 @@
   function openRecentPanel(){
     closeMenu();
     recentPanel.style.display = "block";
-    // charge auto si vide
     if (!recentItemsCache.length) loadRecent();
   }
   function closeRecentPanel(){
@@ -754,6 +760,7 @@
   }
 
   function toggleExpress(){
+    closeMenu();
     if (expressOn) return disableExpress();
     const pin = prompt("🔒 Entrer le code PIN pour activer le mode Express :");
     if (pin === null) return;
@@ -1160,17 +1167,41 @@
     setTimeout(()=>scanEl.focus(), 50);
   }
 
-  // Camera scan
+  // Camera scan (iPhone: force ZXing + HD constraints)
   async function toggleCamera(){
     if (camStream) return stopCamera();
+
     camPanel.style.display = "block";
     camHint.textContent = "Démarrage caméra…";
+
     try{
       lastScanMethod = "phone";
-      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio:false });
+
+      // 🎯 Caméra HD pour améliorer le focus
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio:false
+      });
+
       camVideo.srcObject = camStream;
       await camVideo.play();
 
+      // 🍎 iOS : BarcodeDetector trop instable pour EAN -> ZXing forcé
+      if (IS_IOS) {
+        camHint.textContent = "iPhone détecté — mode scan optimisé…";
+        await loadZXing_();
+        camHint.textContent = zxingLoaded
+          ? "ZXing chargé — détection en cours…"
+          : "ZXing non chargé (réseau/CDN). Utilise la douchette.";
+        if (zxingLoaded) startDetectLoop_ZXing_();
+        return;
+      }
+
+      // 🤖 Autres plateformes : BarcodeDetector si dispo
       if ("BarcodeDetector" in window) {
         try{
           barcodeDetector = new BarcodeDetector({ formats: ["ean_13","ean_8","qr_code","code_128"] });
@@ -1182,9 +1213,12 @@
         }
       }
 
-      camHint.textContent = "BarcodeDetector indisponible — chargement ZXing…";
+      // Fallback ZXing
+      camHint.textContent = "Chargement ZXing…";
       await loadZXing_();
-      camHint.textContent = zxingLoaded ? "ZXing chargé — détection en cours…" : "ZXing non chargé (réseau/CDN). Utilise la douchette.";
+      camHint.textContent = zxingLoaded
+        ? "ZXing chargé — détection en cours…"
+        : "ZXing non chargé (réseau/CDN). Utilise la douchette.";
       if (zxingLoaded) startDetectLoop_ZXing_();
 
     }catch(e){
